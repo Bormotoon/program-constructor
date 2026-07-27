@@ -24,6 +24,27 @@ const note = (ok, text) => {
   if (!ok) problems.push(text);
 };
 
+/**
+ * КТП в том виде, в каком его выдаёт русский Excel: точка с запятой,
+ * кодировка cp1251, без BOM. Именно на таком файле ломался импорт (#12),
+ * поэтому проверка идёт настоящими байтами, а не строкой в UTF-8.
+ */
+function cp1251Csv() {
+  const text = [
+    'Раздел;№ п/п;Тема;Количество часов',
+    'Импортированный раздел;1.1;Импортированная тема;7',
+  ].join('\r\n');
+  const out = [];
+  for (const ch of text) {
+    const c = ch.codePointAt(0);
+    if (c < 128) out.push(c);
+    else if (c >= 0x410 && c <= 0x44f) out.push(c - 0x410 + 0xc0);
+    else if (c === 0x2116) out.push(0xb9);
+    else out.push(0x3f);
+  }
+  return Buffer.from(out);
+}
+
 const browser = await chromium.launch({ executablePath: CHROME, args: ['--no-sandbox'] });
 
 for (const theme of ['light', 'dark']) {
@@ -102,6 +123,7 @@ for (const theme of ['light', 'dark']) {
     .then(() => true)
     .catch(() => false);
   note(dialogOk, 'диалог импорта Excel открывается (ленивый чанк)');
+
   await page.keyboard.press('Escape');
   await page.waitForTimeout(200);
 
@@ -166,6 +188,70 @@ for (const theme of ['light', 'dark']) {
         `выгрузка ${label}: ${download.suggestedFilename().slice(-24)}, ${(size / 1024).toFixed(0)} КБ`,
       );
     }
+  }
+
+  // --- импорт КТП из файла ---
+  // Идёт последним в проходе: импорт заменяет тематический план, и любая
+  // проверка после него считала бы уже не данные ФРП. К этому моменту открыт
+  // предпросмотр, поэтому сначала возвращаемся к редактированию.
+  await page
+    .getByRole('button', { name: /К редактированию/ })
+    .click()
+    .catch(() => {});
+  await page.waitForTimeout(400);
+  await page.getByRole('button', { name: 'Тематическое планирование' }).click();
+  await page.waitForTimeout(300);
+  await page.getByRole('button', { name: /Импорт из Excel/ }).click();
+  await dialog.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
+  // Через диалог пропускается настоящий файл: CSV в cp1251 — то, что по
+  // умолчанию выдаёт русский Excel. Раньше проверялось только открытие
+  // диалога, и порча кириллицы (issue #12) прошла мимо CI.
+  if (dialogOk) {
+    await page.setInputFiles('input[type=file]', {
+      name: 'ktp-cp1251.csv',
+      mimeType: 'text/csv',
+      buffer: cp1251Csv(),
+    });
+    await page.waitForTimeout(400);
+
+    const mappedName = await page
+      .getByLabel('Колонка файла для поля «Тема»')
+      .inputValue()
+      .catch(() => '');
+    const mappedHours = await page
+      .getByLabel('Колонка файла для поля «Количество часов»')
+      .inputValue()
+      .catch(() => '');
+    note(mappedName === 'Тема', `CSV в cp1251: колонка «Тема» найдена автоматически («${mappedName}»)`);
+    note(
+      mappedHours === 'Количество часов',
+      `CSV в cp1251: колонка часов найдена автоматически («${mappedHours}»)`,
+    );
+
+    await page.getByRole('button', { name: 'Импортировать' }).click();
+    await page.waitForTimeout(500);
+
+    const importedRow = page.locator('table tbody tr', { hasText: 'Импортированная тема' });
+    const imported = await importedRow.count();
+    note(imported > 0, `CSV в cp1251: строка доехала в план без порчи кириллицы (${imported})`);
+
+    // Файл с неузнаваемой шапкой: диалог обязан сказать об этом, а не
+    // показывать молча пустые списки соответствия.
+    await page.getByRole('button', { name: /Импорт из Excel/ }).click();
+    await dialog.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
+    await page.setInputFiles('input[type=file]', {
+      name: 'bez-shapki.csv',
+      mimeType: 'text/csv',
+      buffer: Buffer.from('alpha;beta;gamma\r\n1;2;3\r\n', 'utf8'),
+    });
+    await page.waitForTimeout(400);
+    const warned = await dialog
+      .getByText(/не удалось узнать колонки/i)
+      .isVisible()
+      .catch(() => false);
+    note(warned, 'неузнаваемая шапка: диалог предупреждает, а не молчит');
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(200);
   }
 
   note(consoleErrors.length === 0, `ошибок в консоли: ${consoleErrors.length}`);

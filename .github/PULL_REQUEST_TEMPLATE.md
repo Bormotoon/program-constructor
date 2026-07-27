@@ -12,6 +12,7 @@
 - [ ] `npm run lint`
 - [ ] `npm run frp:check`
 - [ ] `npm run verify:export`
+- [ ] `npm run verify:import`
 - [ ] `npm run ui:contrast`
 - [ ] `npm run ui:check`
 

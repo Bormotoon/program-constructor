@@ -281,6 +281,7 @@ src/
     frp/                         GENERATED curriculum data + catalog
   hooks/useTheme.ts              light/dark theme
   index.css                      design tokens, light and dark palettes
+  utils/tableImport.ts           plan import from a file, column matching
   utils/programOutline.ts        the document outline — shared by all exporters
   utils/docxExport.ts            DOCX export
   utils/odtExport.ts             ODT export (a zip of XML, no library)
@@ -296,6 +297,7 @@ tools/
   build_frp_data.py              JSON -> application data
   check_frp_data.py              corpus checks
   verify_export.ts               end-to-end check of all five exports
+  verify_import.ts               plan import: Excel workbook and CSV encodings
   build_pdf_fonts.py             font subsetting for PDF
   ui_check.mjs                   browser scenario check and screenshots
   check_contrast.py              WCAG contrast of the palette
@@ -308,7 +310,7 @@ separate file, fetched when that subject is chosen.
 
 ## Quality and checks
 
-Five checks run before every release — the same ones
+Six checks run before every release — the same ones
 [CI](.github/workflows/ci.yml) runs on every commit and pull request:
 
 | Command | What it checks |
@@ -316,6 +318,7 @@ Five checks run before every release — the same ones
 | `npm run lint` | types (`tsc --noEmit`) |
 | `npm run frp:check` | hour reconciliation and catalog integrity |
 | `npm run verify:export` | data → plans → DOCX, ODT, PDF, TXT and Markdown |
+| `npm run verify:import` | plan import: Excel workbook and CSV in every encoding |
 | `npm run ui:check` | the teacher's scenario in a browser, all five exports |
 | `npm run ui:contrast` | WCAG contrast of the palette in both themes |
 

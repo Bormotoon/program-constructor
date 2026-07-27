@@ -271,6 +271,7 @@ src/
     frp/                         СГЕНЕРИРОВАННЫЕ данные ФРП + каталог
   hooks/useTheme.ts              светлая/тёмная тема
   index.css                      дизайн-токены, светлая и тёмная палитры
+  utils/tableImport.ts           разбор КТП из файла и сопоставление колонок
   utils/programOutline.ts        состав документа — общий для всех выгрузок
   utils/docxExport.ts            выгрузка DOCX
   utils/odtExport.ts             выгрузка ODT (zip с XML, без библиотеки)
@@ -286,6 +287,7 @@ tools/
   build_frp_data.py              JSON -> данные приложения
   check_frp_data.py              проверка корпуса
   verify_export.ts               сквозная проверка всех пяти выгрузок
+  verify_import.ts               импорт КТП: книга Excel и CSV в трёх кодировках
   build_pdf_fonts.py             подмножество шрифта для PDF
   ui_check.mjs                   браузерная проверка сценария и скриншоты
   check_contrast.py              контрастность палитры по WCAG
@@ -298,7 +300,7 @@ tools/
 
 ## Качество и проверки
 
-Перед выпуском прогоняются пять проверок — те же, что гоняет
+Перед выпуском прогоняются шесть проверок — те же, что гоняет
 [CI](.github/workflows/ci.yml) на каждый коммит и pull request:
 
 | Команда | Что проверяет |
@@ -306,6 +308,7 @@ tools/
 | `npm run lint` | типы (`tsc --noEmit`) |
 | `npm run frp:check` | сходимость часов и целостность каталога |
 | `npm run verify:export` | данные → планы → DOCX, ODT, PDF, TXT и Markdown |
+| `npm run verify:import` | импорт КТП: книга Excel и CSV во всех кодировках |
 | `npm run ui:check` | сценарий учителя в браузере и выгрузка всех пяти форматов |
 | `npm run ui:contrast` | контрастность палитры по WCAG в обеих темах |
 

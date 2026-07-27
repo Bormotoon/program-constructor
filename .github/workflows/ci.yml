@@ -47,6 +47,9 @@ jobs:
       - name: Сквозная проверка выгрузки (DOCX, ODT, PDF, TXT, Markdown)
         run: npm run verify:export
 
+      - name: Импорт КТП во всех кодировках
+        run: npm run verify:import
+
       - name: Сборка
         run: npm run build
 

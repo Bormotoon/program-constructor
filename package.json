@@ -1,7 +1,7 @@
 {
   "name": "program-constructor",
   "private": true,
-  "version": "1.0.1",
+  "version": "1.0.2",
   "type": "module",
   "description": "Конструктор рабочих программ по учебным предметам на основе федеральных рабочих программ (ФРП) 2025. Работает в браузере, без сервера и регистрации.",
   "keywords": [
@@ -42,6 +42,7 @@
     "frp:build": ".venv/bin/python tools/build_frp_data.py",
     "frp:check": "python3 tools/check_frp_data.py",
     "verify:export": "esbuild tools/verify_export.ts --bundle --platform=node --format=esm --outfile=build/verify_export.mjs --log-level=error --external:docx && node build/verify_export.mjs",
+    "verify:import": "esbuild tools/verify_import.ts --bundle --platform=node --format=esm --outfile=build/verify_import.mjs --log-level=error && node build/verify_import.mjs",
     "ui:check": "vite build && (vite preview --port 4180 --host 127.0.0.1 & SRV=$!; sleep 6; node tools/ui_check.mjs; CODE=$?; kill $SRV 2>/dev/null; exit $CODE)",
     "ui:contrast": "python3 tools/check_contrast.py"
   },

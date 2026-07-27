@@ -63,6 +63,10 @@ npm run ui:check       # сценарий учителя в настоящем �
   раздел добавляется туда, а не в каждую из пяти выгрузок по отдельности.
 - **Коммиты** — в повелительном наклонении, одна мысль на коммит: «Разделить
   таблицу ОБЗР по годам», а не «фиксы».
+- **`xlsx` ставится тарболлом с cdn.sheetjs.com**, а не из npm: в реестре пакет
+  заброшен на 0.18.5 с двумя неисправленными уязвимостями. Это не опечатка в
+  `package.json` — подробности в
+  [ARCHITECTURE.md](ARCHITECTURE.md#приложение-почему-xlsx-стоит-не-из-npm).
 
 ## Ошибки в самих ФРП
 
@@ -141,6 +145,11 @@ npm run ui:check       # the teacher's scenario in a real browser
 - **The document outline** lives once, in `src/utils/programOutline.ts`. Add new
   sections there rather than to each of the five exporters.
 - **Commits** use the imperative mood, one idea per commit.
+- **`xlsx` is installed from a cdn.sheetjs.com tarball**, not from npm: the
+  registry copy is abandoned at 0.18.5 with two unpatched advisories. That entry
+  in `package.json` is deliberate — see
+  [ARCHITECTURE.md](ARCHITECTURE.md#приложение-почему-xlsx-стоит-не-из-npm)
+  (in Russian).
 
 ## Bugs in the official curricula
 

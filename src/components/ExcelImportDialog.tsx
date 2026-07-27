@@ -1,7 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AlertCircle, ArrowRight, Check, Upload, X } from 'lucide-react';
-import * as XLSX from 'xlsx';
-import { newId, type PlanSection, type PlanTopic } from '../data/thematicPlan';
+import type { PlanSection } from '../data/thematicPlan';
+import {
+  TARGET_COLUMNS,
+  autoMapColumns,
+  missingRequired,
+  parseTable,
+  rowsToSections,
+  type ColumnMapping,
+} from '../utils/tableImport';
 import { Button, IconButton, Notice, cx } from './ui';
 
 interface ExcelImportDialogProps {
@@ -10,27 +17,11 @@ interface ExcelImportDialogProps {
   onImport: (sections: PlanSection[]) => void;
 }
 
-/**
- * Колонки целевой модели. Названия и синонимы подобраны под то, как школы
- * реально называют столбцы в своих КТП, — точного совпадения заголовков
- * не требуется, соответствие всегда можно поправить вручную.
- */
-const TARGET_COLUMNS = [
-  { key: 'section', label: 'Раздел', required: false, synonyms: ['раздел', 'модуль', 'блок'] },
-  { key: 'num', label: '№ п/п', required: false, synonyms: ['№', 'номер', 'п/п'] },
-  { key: 'name', label: 'Тема', required: true, synonyms: ['тема', 'наименование', 'урок'] },
-  { key: 'hours', label: 'Количество часов', required: true, synonyms: ['час', 'кол-во', 'количество'] },
-  { key: 'content', label: 'Программное содержание', required: false, synonyms: ['содержание', 'программное'] },
-  { key: 'activity', label: 'Основные виды деятельности', required: false, synonyms: ['деятельност', 'виды работ', 'характеристика'] },
-] as const;
-
-type TargetKey = (typeof TARGET_COLUMNS)[number]['key'];
-
 export function ExcelImportDialog({ isOpen, onClose, onImport }: ExcelImportDialogProps) {
   const [file, setFile] = useState<File | null>(null);
   const [headers, setHeaders] = useState<string[]>([]);
   const [rows, setRows] = useState<Record<string, unknown>[]>([]);
-  const [mapping, setMapping] = useState<Record<string, string>>({});
+  const [mapping, setMapping] = useState<ColumnMapping>({});
   const [step, setStep] = useState<'upload' | 'map'>('upload');
   const dialogRef = useRef<HTMLDivElement>(null);
 
@@ -43,52 +34,19 @@ export function ExcelImportDialog({ isOpen, onClose, onImport }: ExcelImportDial
     reader.onload = (evt) => {
       // readAsArrayBuffer вместо устаревшего readAsBinaryString: последний
       // ломается на файлах с многобайтовыми символами в ячейках.
-      const wb = XLSX.read(evt.target?.result, { type: 'array' });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const grid = XLSX.utils.sheet_to_json(ws, { header: 1 }) as unknown[][];
-
-      // Шапкой считаем первую строку, где заполнено хотя бы две ячейки:
-      // в школьных КТП над таблицей часто стоит заголовок в одну ячейку.
-      let headerRowIndex = 0;
-      for (let i = 0; i < grid.length; i += 1) {
-        const filled = (grid[i] || []).filter((c) => String(c ?? '').trim()).length;
-        if (filled >= 2) {
-          headerRowIndex = i;
-          break;
-        }
-      }
-
-      const parsedHeaders = (grid[headerRowIndex] || [])
-        .map((h) => String(h ?? '').trim())
-        .filter(Boolean);
-      const parsedRows = XLSX.utils.sheet_to_json(ws, {
-        range: headerRowIndex,
-      }) as Record<string, unknown>[];
-
+      const { headers: parsedHeaders, rows: parsedRows } = parseTable(
+        evt.target?.result as ArrayBuffer,
+      );
       setHeaders(parsedHeaders);
       setRows(parsedRows);
-
-      const auto: Record<string, string> = {};
-      for (const col of TARGET_COLUMNS) {
-        const exact = parsedHeaders.find((h) => h.toLowerCase() === col.label.toLowerCase());
-        if (exact) {
-          auto[col.key] = exact;
-          continue;
-        }
-        const bySynonym = parsedHeaders.find((h) =>
-          col.synonyms.some((s) => h.toLowerCase().includes(s)),
-        );
-        if (bySynonym) auto[col.key] = bySynonym;
-      }
-
-      setMapping(auto);
+      setMapping(autoMapColumns(parsedHeaders));
       setStep('map');
     };
     reader.readAsArrayBuffer(uploadedFile);
   };
 
   const handleImport = () => {
-    const missing = TARGET_COLUMNS.filter((c) => c.required && !mapping[c.key]);
+    const missing = missingRequired(mapping);
     if (missing.length) {
       window.alert(
         `Укажите соответствие для обязательных полей: ${missing.map((c) => c.label).join(', ')}`,
@@ -96,39 +54,7 @@ export function ExcelImportDialog({ isOpen, onClose, onImport }: ExcelImportDial
       return;
     }
 
-    const get = (row: Record<string, unknown>, key: TargetKey): string => {
-      const header = mapping[key];
-      return header ? String(row[header] ?? '').trim() : '';
-    };
-
-    // Строки группируются в разделы по колонке «Раздел». Если её не указали,
-    // весь импорт попадает в один безымянный раздел — так же ведёт себя
-    // таблица, набранная вручную.
-    const sections: PlanSection[] = [];
-    let current: PlanSection | null = null;
-
-    for (const row of rows) {
-      const name = get(row, 'name');
-      if (!name) continue;
-
-      const sectionName = get(row, 'section');
-      if (!current || (sectionName && sectionName !== current.name)) {
-        current = { id: newId('s'), name: sectionName, topics: [] };
-        sections.push(current);
-      }
-
-      const hours = Number.parseInt(get(row, 'hours'), 10);
-      const topic: PlanTopic = {
-        id: newId('t'),
-        num: get(row, 'num'),
-        name,
-        hours: Number.isFinite(hours) && hours >= 0 ? hours : 0,
-        content: get(row, 'content'),
-        activity: get(row, 'activity'),
-      };
-      current.topics.push(topic);
-    }
-
+    const sections = rowsToSections(rows, mapping);
     if (!sections.length) {
       window.alert('В файле не найдено ни одной строки с заполненной темой.');
       return;
@@ -210,10 +136,29 @@ export function ExcelImportDialog({ isOpen, onClose, onImport }: ExcelImportDial
             </label>
           ) : (
             <div className="space-y-5">
-              <Notice tone="ok" icon={<AlertCircle size={15} />}>
-                Колонки файла <strong>{file?.name}</strong> сопоставлены автоматически по
-                заголовкам. Проверьте соответствие и поправьте, если нужно.
-              </Notice>
+              {/* Молчаливый пустой список — худший исход: учитель видит диалог
+                  без единого сопоставления и не понимает, файл не тот или
+                  приложение сломалось. Поэтому случаи разведены. */}
+              {missingRequired(mapping).length ? (
+                <Notice tone="warn" icon={<AlertCircle size={15} />}>
+                  В файле <strong>{file?.name}</strong> не удалось узнать колонки по заголовкам
+                  {headers.length ? (
+                    <>
+                      {' '}
+                      (нашлись такие: {headers.slice(0, 6).join(', ')}
+                      {headers.length > 6 ? ', …' : ''})
+                    </>
+                  ) : (
+                    ' — строка заголовков не найдена'
+                  )}
+                  . Укажите соответствие вручную: обязательны «Тема» и «Количество часов».
+                </Notice>
+              ) : (
+                <Notice tone="ok" icon={<AlertCircle size={15} />}>
+                  Колонки файла <strong>{file?.name}</strong> сопоставлены автоматически по
+                  заголовкам. Проверьте соответствие и поправьте, если нужно.
+                </Notice>
+              )}
 
               <div className="space-y-3">
                 {TARGET_COLUMNS.map((col) => (

@@ -39,6 +39,7 @@ jobs:
           npm run frp:check
           npm run ui:contrast
           npm run verify:export
+          npm run verify:import
 
       - name: Сборка
         run: npm run build

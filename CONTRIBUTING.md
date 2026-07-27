@@ -35,12 +35,13 @@ npm run dev            # http://localhost:3000
 
 ## Перед тем как отправить pull request
 
-Прогоните те же пять проверок, что гоняет CI:
+Прогоните те же шесть проверок, что гоняет CI:
 
 ```bash
 npm run lint           # типы
 npm run frp:check      # целостность корпуса ФРП
 npm run verify:export  # данные -> DOCX, ODT, PDF, TXT, Markdown
+npm run verify:import  # импорт КТП: книга Excel и CSV во всех кодировках
 npm run ui:contrast    # контрастность палитры по WCAG
 npm run ui:check       # сценарий учителя в настоящем браузере
 ```
@@ -119,12 +120,13 @@ On a low-memory machine, `DISABLE_HMR=true npm run dev` turns off file watching.
 
 ## Before opening a pull request
 
-Run the same five checks CI runs:
+Run the same six checks CI runs:
 
 ```bash
 npm run lint           # types
 npm run frp:check      # curriculum corpus integrity
 npm run verify:export  # data -> DOCX, ODT, PDF, TXT, Markdown
+npm run verify:import  # plan import: Excel workbook and CSV encodings
 npm run ui:contrast    # WCAG contrast of the palette
 npm run ui:check       # the teacher's scenario in a real browser
 ```

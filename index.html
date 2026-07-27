@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f8fafc" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1e293b" />
+    <title>Конструктор рабочих программ ФГОС | Единое содержание общего образования</title>
+    <meta name="description" content="Онлайн-конструктор рабочих программ по учебным предметам для школ РФ на базе ФГОС. Создание рабочих программ по ФООП и ФРП." />
+    <style>
+      /*
+        Только то, чего не даёт Tailwind: поля страницы и печать фонов.
+        Правила вида .print\:hidden здесь были лишними — их генерирует сам
+        Tailwind из вариантов print:, а записаны они были с двойным слэшем
+        и потому не совпадали ни с одним классом.
+      */
+      @page { size: A4; margin: 2cm 1.5cm 2cm 3cm; }
+      @media print {
+        body { margin: 0; padding: 0; background: #fff; }
+        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        table { break-inside: auto; }
+        tr { break-inside: avoid; }
+        thead { display: table-header-group; }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

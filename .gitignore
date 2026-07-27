@@ -1,0 +1,24 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+
+# Виртуальное окружение для конвейера разбора ФРП (см. README).
+.venv/
+__pycache__/
+*.py[cod]
+
+# Офлайн-копия edsoo.ru — 6,3 ГБ исходников, в репозиторий не идёт.
+# Разобранные из неё данные лежат в src/data/frp/ и версионируются.
+edsoo/
+
+# Локальные настройки редакторов и вспомогательных инструментов.
+.idea/
+.vscode/
+.mimocode/
+.claude/
+*.swp

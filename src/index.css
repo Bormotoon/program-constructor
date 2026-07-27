@@ -1,0 +1,150 @@
+/* Шрифт ставится пакетом, а не ссылкой на Google Fonts: школьный компьютер
+   часто без интернета или за фильтрующим прокси, и внешний шрифт там просто
+   не загрузится. Variable-версия даёт все начертания одним файлом. */
+@import '@fontsource-variable/inter';
+@import 'tailwindcss';
+
+/*
+  Дизайн-система конструктора.
+
+  Инструмент, за которым учитель сидит часами над плотными таблицами, поэтому
+  палитра намеренно спокойная: нейтральный графит для текста и поверхностей,
+  синий — только как акцент действия, статусные цвета — исключительно для
+  состояний данных. Ни один смысл не передаётся одним лишь цветом: рядом
+  всегда есть значок или подпись.
+*/
+
+@theme {
+  /* Inter — ради полной кириллицы и табличных цифр. Times New Roman остаётся
+     только внутри предпросмотра документа, где он и положен по ГОСТ. */
+  --font-sans: 'Inter Variable', 'Inter', ui-sans-serif, system-ui, 'Segoe UI', Roboto, sans-serif;
+  --font-serif: 'Times New Roman', 'Liberation Serif', serif;
+
+  /* Поверхности и текст */
+  --color-canvas: oklch(0.977 0.003 247);
+  --color-surface: oklch(1 0 0);
+  --color-sunken: oklch(0.968 0.004 247);
+  --color-line: oklch(0.923 0.006 247);
+  --color-line-strong: oklch(0.869 0.009 247);
+
+  --color-ink: oklch(0.279 0.028 256);
+  --color-ink-muted: oklch(0.508 0.023 257);
+  --color-ink-subtle: oklch(0.646 0.019 257);
+
+  /* Акцент действия */
+  --color-brand: oklch(0.546 0.203 262);
+  --color-brand-hover: oklch(0.488 0.203 262);
+  --color-brand-soft: oklch(0.962 0.026 262);
+
+  /* Статусы данных */
+  --color-ok: oklch(0.596 0.126 163);
+  --color-ok-soft: oklch(0.962 0.033 163);
+  --color-warn: oklch(0.639 0.155 71);
+  --color-warn-soft: oklch(0.973 0.045 82);
+  --color-danger: oklch(0.577 0.223 27);
+  --color-danger-soft: oklch(0.966 0.031 18);
+}
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  /* Тёмная тема задана отдельными значениями, а не инверсией светлых:
+     на тёмном фоне насыщенные цвета «звенят», поэтому они приглушены,
+     а контраст текста проверен отдельно. */
+  html.dark {
+    color-scheme: dark;
+
+    --color-canvas: oklch(0.208 0.024 256);
+    --color-surface: oklch(0.262 0.025 256);
+    --color-sunken: oklch(0.232 0.024 256);
+    --color-line: oklch(0.34 0.025 256);
+    --color-line-strong: oklch(0.43 0.028 256);
+
+    --color-ink: oklch(0.968 0.004 247);
+    --color-ink-muted: oklch(0.79 0.015 250);
+    --color-ink-subtle: oklch(0.66 0.018 252);
+
+    --color-brand: oklch(0.68 0.16 262);
+    --color-brand-hover: oklch(0.74 0.15 262);
+    --color-brand-soft: oklch(0.32 0.06 262);
+
+    --color-ok: oklch(0.72 0.14 163);
+    --color-ok-soft: oklch(0.31 0.05 163);
+    --color-warn: oklch(0.78 0.14 78);
+    --color-warn-soft: oklch(0.33 0.05 78);
+    --color-danger: oklch(0.68 0.18 22);
+    --color-danger-soft: oklch(0.32 0.07 22);
+  }
+
+  /* Убирает задержку 300 мс и системную серую вспышку при касании:
+     в плотной таблице она читается как «нажалось не туда». */
+  button,
+  a,
+  input,
+  select,
+  textarea,
+  label {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Кольцо фокуса не убирается никогда — им пользуются с клавиатуры.
+     :focus-visible показывает его только при клавиатурной навигации. */
+  :focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+    border-radius: 0.25rem;
+  }
+
+  /* Варианты нативного select наследуют системный фон, а не фон страницы,
+     и в тёмной теме выпадающий список остаётся белым. */
+  select option {
+    background-color: var(--color-surface);
+    color: var(--color-ink);
+  }
+
+  /* Табличные цифры: иначе колонка часов «пляшет» при каждой правке. */
+  input[type='number'],
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Спиннеры числовых полей крадут ширину в плотной таблице. */
+  input[type='number']::-webkit-inner-spin-button,
+  input[type='number']::-webkit-outer-spin-button {
+    appearance: none;
+    margin: 0;
+  }
+
+  input[type='number'] {
+    -moz-appearance: textfield;
+  }
+}
+
+/* Просили меньше движения — отдаём меньше движения. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media print {
+  body {
+    background: #fff;
+    color: #000;
+  }
+}

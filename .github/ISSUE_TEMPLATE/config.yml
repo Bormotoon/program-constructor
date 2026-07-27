@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Вопрос или обсуждение
+    url: https://github.com/Bormotoon/program-constructor/discussions
+    about: Вопросы по работе с приложением и идеи, до которых ещё не дозрел issue.
+  - name: Уязвимость в безопасности
+    url: https://github.com/Bormotoon/program-constructor/security/advisories/new
+    about: Пожалуйста, сообщайте об уязвимостях приватно, а не публичным issue.
+  - name: Оригинальный конструктор (Институт стратегии развития образования)
+    url: https://workprogram.edsoo.ru/
+    about: Вопросы про сам официальный сервис и про содержание ФРП — туда.

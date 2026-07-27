@@ -1,0 +1,91 @@
+name: Релиз
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Тег релиза (например, v1.0.0)
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Сборка и выпуск
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Установка зависимостей
+        run: npm ci
+
+      - name: Проверки перед выпуском
+        run: |
+          npm run lint
+          npm run frp:check
+          npm run ui:contrast
+          npm run verify:export
+
+      - name: Сборка
+        run: npm run build
+
+      - name: Упаковать готовый сайт
+        # Архив разворачивается на любой статический хостинг и открывается
+        # прямо с диска: base у сборки относительный.
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+          touch dist/.nojekyll
+          (cd dist && zip -qr "../program-constructor-${TAG}.zip" .)
+          ls -lh "program-constructor-${TAG}.zip"
+
+      - name: Собрать примечания к релизу
+        # Раздел из CHANGELOG.md для этой версии; если его нет — примечания
+        # генерирует GitHub по коммитам.
+        run: |
+          VERSION="${TAG#v}"
+          if awk -v v="$VERSION" '
+                $0 ~ "^## \\[" v "\\]" {flag=1; next}
+                flag && /^## \[/ {exit}
+                flag {print}
+              ' CHANGELOG.md | grep -q '[^[:space:]]'; then
+            {
+              awk -v v="$VERSION" '
+                $0 ~ "^## \\[" v "\\]" {flag=1; next}
+                flag && /^## \[/ {exit}
+                flag {print}
+              ' CHANGELOG.md
+              echo
+              echo "---"
+              echo
+              echo "Архив \`program-constructor-${TAG}.zip\` — собранный сайт: распакуйте на любой статический хостинг или откройте \`index.html\` с диска."
+            } > RELEASE_NOTES.md
+            echo "NOTES=--notes-file RELEASE_NOTES.md" >> "$GITHUB_ENV"
+          else
+            echo "NOTES=--generate-notes" >> "$GITHUB_ENV"
+          fi
+
+      - name: Выпустить релиз
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ASSET="program-constructor-${TAG}.zip"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$ASSET" --clobber
+          else
+            gh release create "$TAG" "$ASSET" --title "$TAG" --verify-tag $NOTES
+          fi

@@ -1,0 +1,39 @@
+name: Предложение / Feature request
+description: Чего не хватает в работе с рабочей программой.
+title: "[Предложение] "
+labels: ["предложение"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Какую задачу это решает
+      description: |
+        Опишите ситуацию из работы, а не сразу решение: «чтобы сдать программу
+        завучу, нужен раздел …», «в нашей школе гриф оформляют так …».
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Как это могло бы работать
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Чем обходитесь сейчас
+      description: Например, правкой в Word после выгрузки.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Проверьте, пожалуйста
+      options:
+        - label: Это не внеурочная деятельность и не адаптированная программа (они пока вне области проекта).
+          required: false
+        - label: Я посмотрел(а) открытые issue и похожего предложения не нашёл(ла).
+          required: false

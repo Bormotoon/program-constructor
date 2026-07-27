@@ -1,0 +1,95 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Новый пуш в ветку отменяет предыдущий прогон: браузерная проверка идёт
+# несколько минут, и держать очередь из устаревших прогонов незачем.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Типы, данные и выгрузка
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Установка зависимостей
+        run: npm ci
+
+      - name: Типы
+        run: npm run lint
+
+      - name: Целостность корпуса ФРП
+        run: npm run frp:check
+
+      - name: Контрастность палитры по WCAG
+        run: npm run ui:contrast
+
+      - name: Сквозная проверка выгрузки (DOCX, ODT, PDF, TXT, Markdown)
+        run: npm run verify:export
+
+      - name: Сборка
+        run: npm run build
+
+      - name: Сохранить сборку
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 7
+
+  ui:
+    name: Сценарий учителя в браузере
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Установка зависимостей
+        run: npm ci
+
+      - name: Найти Chrome
+        # ui_check.mjs запускается через playwright-core и берёт браузер по
+        # CHROME_PATH: на раннере Chrome уже стоит, качать свой незачем.
+        run: |
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium-browser || command -v chromium || true)"
+          if [ -z "$CHROME" ]; then
+            echo "::error::Chrome не найден на раннере"
+            exit 1
+          fi
+          echo "CHROME_PATH=$CHROME" >> "$GITHUB_ENV"
+          "$CHROME" --version
+
+      - name: Сценарий учителя, обе темы, все пять выгрузок
+        run: npm run ui:check
+
+      - name: Сохранить скриншоты
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-screenshots
+          path: build/ui/
+          retention-days: 7

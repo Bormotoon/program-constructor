@@ -1,0 +1,83 @@
+name: Ошибка / Bug report
+description: Что-то работает не так, как описано.
+title: "[Ошибка] "
+labels: ["ошибка"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: Что произошло
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Как воспроизвести
+      placeholder: |
+        1. Выбрать предмет «…», класс «…»
+        2. Нажать «Заполнить из ФРП»
+        3. …
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Что ожидалось
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Где именно
+      options:
+        - Интерфейс редактирования
+        - Выгрузка DOCX
+        - Выгрузка ODT
+        - Выгрузка PDF
+        - Выгрузка TXT или Markdown
+        - Печать и предпросмотр
+        - Импорт из Excel
+        - Библиотека программ и сохранение
+        - Поиск образовательной организации
+        - Другое
+    validations:
+      required: true
+
+  - type: input
+    id: env
+    attributes:
+      label: Браузер и ОС
+      placeholder: "Например: Chrome 138, Windows 11"
+    validations:
+      required: true
+
+  - type: input
+    id: office
+    attributes:
+      label: Офисный пакет
+      description: Заполните, если ошибка в открытии выгруженного файла.
+      placeholder: "Например: LibreOffice 25.2 / MS Word 2021 / Р7-Офис"
+    validations:
+      required: false
+
+  - type: input
+    id: version
+    attributes:
+      label: Версия приложения
+      description: Номер релиза или хеш коммита; для сайта — дата открытия.
+    validations:
+      required: false
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Файлы и снимки экрана
+      description: |
+        Файл программы (`.json`) из «Мои программы → Сохранить в файл» помогает
+        воспроизвести проблему точно. Ошибки из консоли браузера (F12) тоже
+        полезны.
+    validations:
+      required: false

@@ -1,0 +1,69 @@
+name: Расхождение с ФРП / Mismatch with the federal curriculum
+description: Приложение показывает не то, что написано в официальной программе.
+title: "[ФРП] "
+labels: ["данные", "frp"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Данные разбираются из PDF машинно, поэтому такие сообщения — самые
+        ценные: увидеть ошибку может только человек, знающий предмет.
+
+        Прежде чем заводить issue, загляните в
+        [список расхождений в самих официальных PDF](https://github.com/Bormotoon/program-constructor#расхождения-в-самих-исходниках) —
+        часть несоответствий заложена в исходных документах и воспроизводится
+        намеренно.
+
+  - type: input
+    id: subject
+    attributes:
+      label: Предмет и уровень
+      placeholder: "Например: История, ООО (базовый)"
+    validations:
+      required: true
+
+  - type: input
+    id: grade
+    attributes:
+      label: Класс
+      placeholder: "Например: 7"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: section
+    attributes:
+      label: Где расхождение
+      options:
+        - Тематическое планирование
+        - Поурочное планирование
+        - Пояснительная записка
+        - Содержание обучения
+        - Планируемые результаты
+        - Количество часов
+        - Другое
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Что написано в официальной ФРП
+      description: Процитируйте документ и назовите страницу, если знаете.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Что показывает приложение
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Версия приложения
+      description: Номер релиза или хеш коммита; для сайта — дата открытия.
+    validations:
+      required: false

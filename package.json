@@ -1,0 +1,73 @@
+{
+  "name": "program-constructor",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Конструктор рабочих программ по учебным предметам на основе федеральных рабочих программ (ФРП) 2025. Работает в браузере, без сервера и регистрации.",
+  "keywords": [
+    "education",
+    "curriculum",
+    "lesson-planner",
+    "docx",
+    "odt",
+    "offline-first",
+    "react",
+    "frp",
+    "fgos",
+    "russian-school"
+  ],
+  "license": "MIT",
+  "author": "Bormotoon",
+  "homepage": "https://bormotoon.github.io/program-constructor/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Bormotoon/program-constructor.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Bormotoon/program-constructor/issues"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "vite --port=3000 --host=0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview",
+    "clean": "rm -rf dist server.js",
+    "lint": "tsc --noEmit",
+    "frp:parse": ".venv/bin/python tools/frp_parser.py edsoo/wp-content/uploads/2025/07/2025_*frp*.pdf -o build/frp --resume",
+    "frp:content": ".venv/bin/python tools/frp_content.py edsoo/wp-content/uploads/2025/07/2025_*frp*.pdf -o build/frp-content",
+    "frp:lessons": ".venv/bin/python tools/frp_lessons.py edsoo/wp-content/uploads/2025/07/2025_*frp*.pdf -o build/frp-lessons",
+    "frp:reparse": ".venv/bin/python tools/reparse_stale.py",
+    "frp:build": ".venv/bin/python tools/build_frp_data.py",
+    "frp:check": "python3 tools/check_frp_data.py",
+    "verify:export": "esbuild tools/verify_export.ts --bundle --platform=node --format=esm --outfile=build/verify_export.mjs --log-level=error --external:docx && node build/verify_export.mjs",
+    "ui:check": "vite build && (vite preview --port 4180 --host 127.0.0.1 & SRV=$!; sleep 6; node tools/ui_check.mjs; CODE=$?; kill $SRV 2>/dev/null; exit $CODE)",
+    "ui:contrast": "python3 tools/check_contrast.py"
+  },
+  "dependencies": {
+    "@fontsource-variable/inter": "^5.3.0",
+    "@tailwindcss/vite": "^4.1.14",
+    "@vitejs/plugin-react": "^5.0.4",
+    "docx": "^9.7.1",
+    "fflate": "^0.8.3",
+    "file-saver": "^2.0.5",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
+    "lucide-react": "^0.546.0",
+    "react": "^19.0.1",
+    "react-dom": "^19.0.1",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@types/file-saver": "^2.0.7",
+    "@types/node": "^22.14.0",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "autoprefixer": "^10.4.21",
+    "playwright-core": "^1.62.0",
+    "tailwindcss": "^4.1.14",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.3"
+  }
+}

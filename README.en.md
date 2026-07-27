@@ -9,6 +9,7 @@ browser, without an account, exporting to DOCX, ODT, PDF, TXT and Markdown.**
 [![Deploy to GitHub Pages](https://github.com/Bormotoon/program-constructor/actions/workflows/pages.yml/badge.svg)](https://github.com/Bormotoon/program-constructor/actions/workflows/pages.yml)
 [![Release](https://img.shields.io/github/v/release/Bormotoon/program-constructor?label=release)](https://github.com/Bormotoon/program-constructor/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Donate](https://img.shields.io/badge/%E2%9D%A4-Support%20the%20project-E53935)](https://dalink.to/bormotoon)
 
 [**Open the app**](https://bormotoon.github.io/program-constructor/) ·
 [Features](#what-it-does-differently) ·
@@ -364,6 +365,13 @@ request is in [CONTRIBUTING.md](CONTRIBUTING.md). The
 per [SECURITY.md](SECURITY.md).
 
 Version history is in [CHANGELOG.md](CHANGELOG.md).
+
+## Support the project
+
+The constructor is free and runs right in your browser — no accounts, no
+subscriptions. If it saved you a weekend, support development:
+
+[![Support Curriculum Constructor](docs/images/donate_banner.png)](https://dalink.to/bormotoon)
 
 ## License
 

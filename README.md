@@ -9,6 +9,7 @@
 [![Публикация на GitHub Pages](https://github.com/Bormotoon/program-constructor/actions/workflows/pages.yml/badge.svg)](https://github.com/Bormotoon/program-constructor/actions/workflows/pages.yml)
 [![Релиз](https://img.shields.io/github/v/release/Bormotoon/program-constructor?label=%D1%80%D0%B5%D0%BB%D0%B8%D0%B7)](https://github.com/Bormotoon/program-constructor/releases/latest)
 [![Лицензия: MIT](https://img.shields.io/badge/%D0%BB%D0%B8%D1%86%D0%B5%D0%BD%D0%B7%D0%B8%D1%8F-MIT-blue.svg)](LICENSE)
+[![Поддержать](https://img.shields.io/badge/%E2%9D%A4-%D0%9F%D0%BE%D0%B4%D0%B4%D0%B5%D1%80%D0%B6%D0%B0%D1%82%D1%8C%20%D0%BF%D1%80%D0%BE%D0%B5%D0%BA%D1%82-E53935)](https://dalink.to/bormotoon)
 
 [**Открыть приложение**](https://bormotoon.github.io/program-constructor/) ·
 [Возможности](#чем-отличается-от-оригинала) ·
@@ -353,6 +354,13 @@ tools/
 [SECURITY.md](SECURITY.md).
 
 История версий — в [CHANGELOG.md](CHANGELOG.md).
+
+## Поддержать проект
+
+Конструктор бесплатен и работает прямо в браузере, без регистрации и подписок.
+Если он сэкономил вам выходные — поддержите разработку:
+
+[![Поддержать конструктор рабочих программ](docs/images/donate_banner.png)](https://dalink.to/bormotoon)
 
 ## Лицензия
 

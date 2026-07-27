@@ -21,7 +21,7 @@ jobs:
     name: Типы, данные и выгрузка
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v5
         with:
@@ -61,7 +61,7 @@ jobs:
     name: Сценарий учителя в браузере
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v5
         with:

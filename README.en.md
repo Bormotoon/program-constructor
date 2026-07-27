@@ -130,7 +130,7 @@ traps and recipes for typical changes.
 
 ## Quick start
 
-Requires [Node.js](https://nodejs.org/) 20 or newer.
+Requires [Node.js](https://nodejs.org/) 20.19+ or 22.12+ (a Vite 8 constraint).
 
 ```bash
 git clone https://github.com/Bormotoon/program-constructor.git
@@ -143,9 +143,11 @@ The app comes up at `http://localhost:3000`. The curriculum data ships in the
 repository, so nothing else needs downloading.
 
 For a production build run `npm run build`; the result lands in `dist/`. It
-needs no server: `base` is relative, so it can be dropped into a subdirectory,
-served from any static host, or opened as `index.html` straight from disk. A
-prebuilt archive for each version is attached to the
+needs no backend, but it does need a static HTTP server: the app ships as ES
+modules, and browsers refuse to load those over `file://`. `base` is relative,
+so the directory can go into any subdirectory — your own domain, GitHub Pages,
+or `python3 -m http.server` inside `dist/`. A prebuilt archive for each version
+is attached to the
 [releases](https://github.com/Bormotoon/program-constructor/releases/latest).
 
 ## Where the data comes from
@@ -326,10 +328,11 @@ Specifically addressed:
 
 - **input latency** in the tables — rows are memoized and handlers are stable,
   so editing one cell does not re-render a hundred rows (measured in `ui:check`);
-- **download weight** — the initial bundle is 89 KB gzipped. Everything heavy is
-  split out and loaded on demand: DOCX (103 KB), PDF with its embedded font
-  (207 KB), Excel parsing (117 KB); subject plans arrive with the subject. Text
-  and Markdown export weighs 1 KB — it needs nothing but the data itself;
+- **download weight** — the initial bundle is 90 KB gzipped (74 KB brotli).
+  Everything heavy is split out and loaded on demand: DOCX (103 KB), PDF with
+  its embedded font (204 KB), Excel parsing (125 KB); subject plans arrive with
+  the subject. Text and Markdown export weighs 1 KB — it needs nothing but the
+  data itself;
 - **keyboard focus** — every field and icon button has a visible focus ring;
   `focus:outline-none` is never used without a replacement;
 - **the dark theme** is defined by its own token values rather than inverted

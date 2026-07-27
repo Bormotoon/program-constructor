@@ -133,7 +133,10 @@ export function Field({ label, hint, error, required, children }: FieldProps) {
           </span>
         )}
       </div>
-      {children(id, describedBy, required)}
+      {/* required нормализуется здесь: у поля этот признак необязательный, а
+          вызывающему коду он приходит как aria-required, где undefined и false
+          значат разное. TypeScript 5.8 пропускал это несоответствие, 7.0 ловит. */}
+      {children(id, describedBy, required ?? false)}
       {hint && !error && (
         <p id={hintId} className="text-xs text-ink-subtle">
           {hint}

@@ -23,7 +23,8 @@ export default defineConfig(() => {
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
     },
     build: {
-      rollupOptions: {
+      // С Vite 8 сборщик — rolldown, и rollupOptions у него помечен устаревшим.
+      rolldownOptions: {
         input: {
           main: path.resolve(__dirname, 'index.html'),
         },

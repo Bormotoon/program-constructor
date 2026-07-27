@@ -372,3 +372,6 @@ the Institute for Educational Development Strategy. This project is not
 affiliated with that institute or with the Russian Ministry of Education and is
 not an official service; refer to the [primary source](https://edsoo.ru/) for
 the content of the curricula.
+
+Fonts, OpenStreetMap data and third-party library licenses are listed in
+[NOTICE.md](NOTICE.md).

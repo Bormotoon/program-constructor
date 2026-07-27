@@ -19,21 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
----
-
-Примечание о содержимом каталога src/data/frp/
-
-Лицензия MIT распространяется на код этого репозитория. Тексты федеральных
-рабочих программ в src/data/frp/ — не результат творчества авторов проекта:
-это машинный разбор официальных документов, опубликованных Институтом
-стратегии развития образования на edsoo.ru. Их правовой режим определяется
-законодательством об официальных документах, а не этой лицензией.
-
-Note on the contents of src/data/frp/
-
-The MIT license above covers the code in this repository. The federal
-curriculum texts under src/data/frp/ are not authored by this project: they are
-a machine-readable extraction of official documents published by the Russian
-Institute for Educational Development Strategy at edsoo.ru. Their legal status
-is governed by the law on official documents, not by this license.

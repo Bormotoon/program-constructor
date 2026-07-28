@@ -70,6 +70,9 @@ Everything essential to the original is implemented:
   language in grade 6) the choice is left to the teacher;
 - hour accounting: per-section subtotals, a grand total row, and a check against
   the hour norm declared by the curriculum, with mismatches highlighted;
+- **a bridge to the federal textbook register catalog** — "teaching materials" is
+  the one section the curriculum provides no text for, and the textbook list no
+  longer has to be typed by hand ([details](#textbooks-from-the-federal-register));
 - a configurable approval block on the title page (the same four combinations as
   the original);
 - optional table columns can be hidden;
@@ -107,6 +110,50 @@ heading reached every format.
 ![Dark theme](docs/screenshots/plan-dark.png)
 
 </details>
+
+## Textbooks from the federal register
+
+Every text section is inserted from the curriculum verbatim — every one but a
+single exception. "Teaching materials and support" is not prescribed by the
+federal curriculum: the app fills in a generic placeholder ("a textbook for this
+subject, included in the federal register"), and the actual titles and authors
+used to be typed by hand.
+
+When a federal textbook register (ФПУ) catalog is deployed next door on the same
+origin, the two applications talk to each other in both directions.
+
+**Outbound.** A "Pick from the register" button opens the catalog with filters
+for the current program's subject and grade already applied.
+
+![Invitation to pick textbooks from the register](docs/screenshots/umk-invite-light.png)
+
+The subject travels as a search query (`q=`) rather than an exact filter:
+subject names in the curriculum and in the register do not always match — "Труд
+(технология)", "Иностранный (английский) язык" — and an exact filter would
+return nothing.
+
+**Inbound.** The catalog writes the selected list into `localStorage` and opens
+the constructor with a `#umk` link. The constructor lands directly on that
+section and shows what arrived: how many textbooks, for which subjects and
+grades, and the first four titles.
+
+![A textbook list handed over from the register](docs/screenshots/umk-handoff-light.png)
+
+Nothing is substituted silently — the teacher chooses: insert, append, or
+dismiss. The list is picked up without a reload: the app listens for `storage`
+and `focus` events, since the catalog is usually open in the next tab.
+
+An unaccepted handover lives for 24 hours: a week-old list is unlikely to be
+about the current program any more. Corrupted or foreign JSON is dropped
+silently — this is a background check, not something to bother the teacher with.
+
+The exchange goes through `localStorage` on the shared origin, not through a
+server: neither application has one. Nothing leaves the machine.
+
+> **The catalog is a separate application.** The constructor looks for it next
+> door (`../fpu/`). The GitHub Pages demo has no such neighbour, so "Pick from
+> the register" leads to a 404 there — this works in deployments where both
+> applications sit side by side. Everything else works fully on the demo.
 
 ## Where programs are stored
 
@@ -269,6 +316,7 @@ src/
     ExcelImportDialog.tsx        lesson-plan import from Excel
     ExportMenu.tsx               export menu, five formats
     LibraryDialog.tsx            saved programs
+    UmkFromCatalog.tsx           bridge to the textbook register catalog
     SchoolCombobox.tsx           school lookup (OpenStreetMap)
     ErrorBoundary.tsx            recovery screen on UI failure
     ui.tsx                       primitives: buttons, fields, cards, notices
@@ -282,6 +330,7 @@ src/
   hooks/useTheme.ts              light/dark theme
   index.css                      design tokens, light and dark palettes
   utils/tableImport.ts           plan import from a file, column matching
+  utils/fpuHandoff.ts            textbook list handover from the register
   utils/programOutline.ts        the document outline — shared by all exporters
   utils/docxExport.ts            DOCX export
   utils/odtExport.ts             ODT export (a zip of XML, no library)

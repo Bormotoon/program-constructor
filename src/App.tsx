@@ -20,6 +20,7 @@ import {
   Table2,
   Wand2,
 } from 'lucide-react';
+import UmkFromCatalog from './components/UmkFromCatalog';
 import { SchoolCombobox } from './components/SchoolCombobox';
 import { ExportMenu } from './components/ExportMenu';
 import { LibraryDialog } from './components/LibraryDialog';
@@ -131,7 +132,11 @@ export default function App() {
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [entries, setEntries] = useState<library.LibraryEntry[]>(() => library.list());
   const [storageError, setStorageError] = useState('');
-  const [activeTab, setActiveTab] = useState<TabId>('title');
+  // Каталог перечня открывает конструктор ссылкой с «#umk» — значит, учитель
+  // пришёл именно за разделом УМК, и показывать ему титульный лист незачем.
+  const [activeTab, setActiveTab] = useState<TabId>(() =>
+    window.location.hash === '#umk' ? 'support' : 'title',
+  );
   const [plan, setPlan] = useState<FrpPlan | null>(null);
   const [planLoading, setPlanLoading] = useState(false);
   /** Slug, для которого ждём план, чтобы подставить официальные тексты ФРП. */
@@ -865,13 +870,21 @@ export default function App() {
             )}
 
             {activeTab === 'support' && (
-              <TextSection
-                title="Учебно-методическое обеспечение образовательного процесса"
-                hint="Учебники из федерального перечня, электронные ресурсы, дидактические материалы."
-                value={data.methodologicalSupport}
-                onChange={(v) => patch({ methodologicalSupport: v })}
-                rows={16}
-              />
+              <div className="space-y-5">
+                <UmkFromCatalog
+                  subject={data.subject}
+                  grade={data.grade}
+                  current={data.methodologicalSupport}
+                  onApply={(v) => patch({ methodologicalSupport: v })}
+                />
+                <TextSection
+                  title="Учебно-методическое обеспечение образовательного процесса"
+                  hint="Учебники из федерального перечня, электронные ресурсы, дидактические материалы."
+                  value={data.methodologicalSupport}
+                  onChange={(v) => patch({ methodologicalSupport: v })}
+                  rows={16}
+                />
+              </div>
             )}
           </Card>
         </main>

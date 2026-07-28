@@ -6,8 +6,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f8fafc" />
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1e293b" />
-    <title>Конструктор рабочих программ ФГОС | Единое содержание общего образования</title>
-    <meta name="description" content="Онлайн-конструктор рабочих программ по учебным предметам для школ РФ на базе ФГОС. Создание рабочих программ по ФООП и ФРП." />
+    <!--
+      Заголовок не должен мимикрировать под ЕДСОО (edsoo.ru, «Единое содержание
+      общего образования» — портал ИСРО). Прежний вариант читался как официальный
+      ресурс: люди приходили по запросу «едсоо конструктор» и отскакивали, поняв
+      ошибку. Отскок при 16 тыс. показов в месяц бьёт по поведенческим.
+      Здесь и далее — «независимый», год учебный (так ищут), ФГОС (так ищут).
+    -->
+    <title>Конструктор рабочих программ 2026-2027 по новым ФГОС — без регистрации</title>
+    <meta name="description" content="Независимый конструктор рабочих программ на 2026-2027 учебный год: 74 федеральные рабочие программы, тематическое и поурочное планирование, выгрузка в DOCX. Работает в браузере — без регистрации, без личного кабинета, бесплатно." />
     <style>
       /*
         Только то, чего не даёт Tailwind: поля страницы и печать фонов.
@@ -24,6 +31,25 @@
         thead { display: table-header-group; }
       }
     </style>
+    <!--
+      Яндекс.Метрика — тот же счётчик, что и на портале (тема его не печатает:
+      приложение лежит физической папкой рядом с WordPress). Один счётчик на
+      обоих — иначе рвётся воронка «лендинг → приложение».
+      ponytail: только просмотры. Цели (дошёл ли до выгрузки DOCX) — отдельной
+      задачей, когда станет понятно, есть ли тут вообще трафик.
+    -->
+    <script>
+      (function (m, e, t, r, i, k, a) {
+        m[i] = m[i] || function () { (m[i].a = m[i].a || []).push(arguments); };
+        m[i].l = 1 * new Date();
+        for (var j = 0; j < document.scripts.length; j++) { if (document.scripts[j].src === r) return; }
+        k = e.createElement(t); a = e.getElementsByTagName(t)[0];
+        k.async = 1; k.src = r; a.parentNode.insertBefore(k, a);
+      })(window, document, 'script', 'https://mc.yandex.ru/metrika/tag.js', 'ym');
+      ym(108745963, 'init', { clickmap: true, trackLinks: true, accurateTrackBounce: true });
+    </script>
+    <!-- noscript-пикселя нет намеренно: приложение — React-SPA, без JS оно не работает,
+         считать такого посетителя нечем и незачем. -->
   </head>
   <body>
     <div id="root"></div>

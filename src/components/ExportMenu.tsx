@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { ChevronDown, Download, File, FileCode2, FileText, FileType2, Loader2 } from 'lucide-react';
 import { Button, cx } from './ui';
 import type { ProgramData } from '../data/program';
+import { recoverFromStaleBuild } from '../utils/staleBuild';
 
 /**
  * Меню выгрузки программы.
@@ -89,6 +90,9 @@ export function ExportMenu({ data, size = 'md' }: { data: ProgramData; size?: 's
     try {
       await run(format, data);
     } catch (e) {
+      // Чанк мог исчезнуть с сервера после выката, пока вкладка была открыта:
+      // тогда чиним свежей загрузкой, а не пугаем учителя ошибкой.
+      if (recoverFromStaleBuild(e)) return;
       console.error(`Не удалось выгрузить ${format}:`, e);
       setFailed(FORMATS.find((f) => f.id === format)?.label ?? format);
     } finally {

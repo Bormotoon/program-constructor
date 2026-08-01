@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { ChevronDown, Download, File, FileCode2, FileText, FileType2, Loader2 } from 'lucide-react';
 import { Button, cx } from './ui';
+import { SupportDialog, shouldAskForSupport } from './SupportDialog';
 import type { ProgramData } from '../data/program';
 import { recoverFromStaleBuild } from '../utils/staleBuild';
 
@@ -62,6 +63,7 @@ export function ExportMenu({ data, size = 'md' }: { data: ProgramData; size?: 's
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState<Format | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
+  const [support, setSupport] = useState(false);
   const wrap = useRef<HTMLDivElement>(null);
   const menuId = useId();
 
@@ -89,6 +91,10 @@ export function ExportMenu({ data, size = 'md' }: { data: ProgramData; size?: 's
     setBusy(format);
     try {
       await run(format, data);
+      // Просьба о поддержке — только после удачной выгрузки и с паузой:
+      // вместе с полосой загрузки браузера окно выглядело бы помехой, а не
+      // благодарностью. Показывается один раз за всё время (см. SupportDialog).
+      if (shouldAskForSupport()) window.setTimeout(() => setSupport(true), 900);
     } catch (e) {
       // Чанк мог исчезнуть с сервера после выката, пока вкладка была открыта:
       // тогда чиним свежей загрузкой, а не пугаем учителя ошибкой.
@@ -169,6 +175,8 @@ export function ExportMenu({ data, size = 'md' }: { data: ProgramData; size?: 's
           Идёт выгрузка {busy}
         </span>
       )}
+
+      {support && <SupportDialog onClose={() => setSupport(false)} />}
     </div>
   );
 }

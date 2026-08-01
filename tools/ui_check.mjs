@@ -162,6 +162,8 @@ for (const theme of ['light', 'dark']) {
     // Выгрузка во все пять форматов. Проверяется именно в браузере: каждая
     // библиотека грузится отдельным чанком по нажатию, и сломанный импорт
     // виден только здесь — сборка и типы на него не ругаются.
+    const support = page.getByRole('dialog', { name: /Файл готов/ });
+
     for (const [label, expect] of [
       ['DOCX', /\.docx$/],
       ['ODT', /\.odt$/],
@@ -187,6 +189,25 @@ for (const theme of ['light', 'dark']) {
         expect.test(download.suggestedFilename()) && size > 2000,
         `выгрузка ${label}: ${download.suggestedFilename().slice(-24)}, ${(size / 1024).toFixed(0)} КБ`,
       );
+
+      /* Просьба о поддержке: приходит один раз, после первой выгрузки, и
+         только после неё — иначе окно превращается в помеху. Проверяем оба
+         условия здесь же: перекрывая меню выгрузки, оно сломало бы и сам
+         сценарий. */
+      if (label === 'DOCX') {
+        const shown = await support
+          .waitFor({ state: 'visible', timeout: 5000 })
+          .then(() => true)
+          .catch(() => false);
+        note(shown, 'после первой выгрузки показана просьба о поддержке');
+        await page.keyboard.press('Escape');
+        await support.waitFor({ state: 'hidden', timeout: 3000 }).catch(() => {});
+      } else {
+        // Окно приходит с паузой в 900 мс — ждём дольше, чтобы «не появилось»
+        // значило именно это, а не «не успело».
+        await page.waitForTimeout(1500);
+        note(!(await support.isVisible()), `на выгрузке ${label} просьба не повторилась`);
+      }
     }
   }
 

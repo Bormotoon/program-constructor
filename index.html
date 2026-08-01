@@ -54,5 +54,12 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <!--
+      «Напишите нам» — виджет из плагина pedobraz-feedback (педобраз.рф).
+      Приложение раздаётся с того же домена по /program-constructor/, поэтому
+      относительный /wp-json/ бьёт в тот же WordPress без CORS. Персональные
+      данные не собираются — см. readme.txt плагина.
+    -->
+    <script defer src="/wp-content/plugins/pedobraz-feedback/assets/pedobraz-feedback.js" data-pb-feedback></script>
   </body>
 </html>

@@ -56,6 +56,14 @@ for (const theme of ['light', 'dark']) {
     // Выгрузка проверяется настоящим скачиванием файла.
     acceptDownloads: true,
   });
+  // Виджет «Напишите нам» раздаёт WordPress (педобраз.рф), и в автономном
+  // preview его файла нет. Без заглушки 404 попадает в консоль и валит проверку
+  // «ошибок в консоли: 0» — CI красный с выпуска 1.0.5. Отдаём пустышку: сам
+  // виджет к приложению отношения не имеет и проверять тут нечего.
+  await context.route('**/wp-content/plugins/pedobraz-feedback/**', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/javascript', body: '' }),
+  );
+
   const page = await context.newPage();
 
   const consoleErrors = [];

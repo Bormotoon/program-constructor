@@ -29,6 +29,9 @@
         table { break-inside: auto; }
         tr { break-inside: avoid; }
         thead { display: table-header-group; }
+        /* Блоки РСЯ печатаются вместе с программой, если их не убрать: учитель
+           печатает рабочую программу для завуча, а не рекламу. */
+        [id^="yandex_rtb"] { display: none !important; }
       }
     </style>
     <!--
@@ -50,6 +53,35 @@
     </script>
     <!-- noscript-пикселя нет намеренно: приложение — React-SPA, без JS оно не работает,
          считать такого посетителя нечем и незачем. -->
+    <!--
+      РСЯ, авторасстановка, площадка 18503127 — тот же код, что печатает тема
+      портала (deploy_theme/inc/ads.php). Тема сюда не достаёт: приложение лежит
+      физической папкой рядом с WordPress, wp_head здесь не срабатывает.
+      Загрузка отложена до первого действия пользователя — бандл РСЯ самый
+      тяжёлый на странице, а блоки авторасстановки всё равно ниже сгиба, так что
+      отложенная загрузка не стоит ни одного реального показа.
+    -->
+    <script>
+      (function () {
+        var loaded = false;
+        var EV = ['scroll', 'pointerdown', 'keydown', 'touchstart', 'mousemove', 'wheel'];
+        function load() {
+          if (loaded) { return; }
+          loaded = true;
+          EV.forEach(function (e) { window.removeEventListener(e, load); });
+          var ctx = document.createElement('script');
+          ctx.src = 'https://yandex.ru/ads/system/context.js';
+          ctx.async = true;
+          var ap = document.createElement('script');
+          ap.src = 'https://yandex.ru/ads/system/ap-loader.js';
+          ap.async = true;
+          ap.setAttribute('data-page-id', '18503127');
+          document.head.appendChild(ctx);
+          document.head.appendChild(ap);
+        }
+        EV.forEach(function (e) { window.addEventListener(e, load, { passive: true }); });
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

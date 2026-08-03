@@ -70,6 +70,7 @@ import {
   planHours,
   planTopicCount,
 } from './data/thematicPlan';
+import { HOURS_DOC_URL, hoursChange } from './data/hoursCorrections';
 import { frpLessonVariants, generateLessonPlan, lessonsFromFrp } from './data/lessonPlan';
 import { generateNormativeBase } from './data/normativeBase';
 import {
@@ -152,11 +153,21 @@ export default function App() {
 
   const levelSubjects = useMemo(() => subjectsForLevel(data.educationLevel), [data.educationLevel]);
 
-  /** Часы по ФРП для выбранного класса — контрольное значение для таблицы. */
+  /** Норму предмета поменял приказ, вышедший после ФРП; null — таких нет. */
+  const change = useMemo(
+    () => (entry && data.grade ? hoursChange(entry.slug, Number(data.grade)) : null),
+    [entry, data.grade],
+  );
+
+  /**
+   * Часы для выбранного класса — контрольное значение для таблицы. Норма из
+   * ФРП, а если её поменял приказ — та, что действует на сегодня.
+   */
   const expectedHours = useMemo(() => {
     if (!entry || !data.grade) return null;
+    if (change) return change.hours;
     return entry.hoursByGrade[data.grade] ?? null;
-  }, [entry, data.grade]);
+  }, [entry, data.grade, change]);
 
   /**
    * Расхождения самой ФРП, относящиеся к выбранному классу (grade 0 — ко всей
@@ -173,6 +184,8 @@ export default function App() {
   const hoursOff =
     expectedHours != null &&
     totalHours !== expectedHours &&
+    // Приказ поменял норму — законны оба числа, старое и новое.
+    totalHours !== change?.alsoAllowed &&
     !(entry?.modular && totalHours > expectedHours);
 
   useEffect(() => {
@@ -374,7 +387,7 @@ export default function App() {
     if (!data.normativeBase) list.push('Не заполнена пояснительная записка');
     if (!data.thematicPlan.length) list.push('Не заполнено тематическое планирование');
     else if (hoursOff) {
-      list.push(`Часы плана (${totalHours}) не совпадают с ФРП (${expectedHours})`);
+      list.push(`Часы плана (${totalHours}) не совпадают с нормой (${expectedHours})`);
     }
     return list;
   }, [data, hoursOff, totalHours, expectedHours]);
@@ -682,7 +695,16 @@ export default function App() {
               <dl className="space-y-2 text-sm">
                 <Row label="Предмет" value={data.subject || '—'} />
                 <Row label="Класс" value={data.grade || '—'} />
-                <Row label="Норма ФРП" value={expectedHours != null ? `${expectedHours} ч` : '—'} />
+                <Row
+                  label={change?.inForce ? 'Норма по приказу' : 'Норма ФРП'}
+                  value={
+                    expectedHours == null
+                      ? '—'
+                      : change
+                        ? `${expectedHours} ч или ${change.alsoAllowed} ч`
+                        : `${expectedHours} ч`
+                  }
+                />
                 <Row
                   label="В плане"
                   value={`${totalHours} ч`}
@@ -690,6 +712,17 @@ export default function App() {
                 />
                 <Row label="Тем" value={String(planTopicCount(data.thematicPlan))} />
               </dl>
+
+              {change && (
+                <div className="mt-3 border-t border-line pt-3">
+                  <Notice tone="warn" icon={<AlertTriangle size={14} />}>
+                    <p className="font-medium">Часы предмета изменены приказом</p>
+                    <p className="mt-1.5">
+                      Подробности — на вкладке «Тематическое планирование».
+                    </p>
+                  </Notice>
+                </div>
+              )}
 
               {gradeIssues.length > 0 && (
                 <div className="mt-3 border-t border-line pt-3">
@@ -816,12 +849,38 @@ export default function App() {
                   </div>
                 </div>
 
+                {/*
+                  Часы предмета поменял приказ, вышедший после ФРП. Плашка
+                  висит там, где учитель проставляет часы, и до таблицы:
+                  конструктор не выбирает за него между старой и новой нормой,
+                  а показывает обе и отсылает к документу.
+                */}
+                {change && (
+                  <Notice tone="warn" icon={<AlertTriangle size={16} />}>
+                    <p className="font-semibold">
+                      Часы этого предмета изменены приказом — перепроверьте
+                    </p>
+                    <p className="mt-1.5">{change.text}</p>
+                    <p className="mt-1.5">
+                      <a
+                        className="font-medium underline underline-offset-2"
+                        href={HOURS_DOC_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Письмо Минпросвещения от 02.03.2026 № 03-320 (изменения по классам)
+                      </a>
+                    </p>
+                  </Notice>
+                )}
+
                 {data.thematicPlan.length ? (
                   <ThematicPlanEditor
                     sections={data.thematicPlan}
                     onChange={setThematicPlan}
                     expectedHours={expectedHours}
                     modular={entry?.modular}
+                    alsoAllowedHours={change?.alsoAllowed ?? null}
                     grade={data.grade}
                   />
                 ) : (

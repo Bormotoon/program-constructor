@@ -92,6 +92,11 @@ export function validatePlan(
   sections: PlanSection[],
   expectedHours: number | null,
   modular = false,
+  /**
+   * Второе допустимое значение: у предмета, которому приказ поменял норму,
+   * законны и старое число, и новое — выбирает учитель (data/hoursCorrections.ts).
+   */
+  alsoAllowed: number | null = null,
 ): PlanIssue[] {
   const issues: PlanIssue[] = [];
 
@@ -121,7 +126,7 @@ export function validatePlan(
   }
 
   const total = planHours(sections);
-  if (expectedHours != null && total !== expectedHours) {
+  if (expectedHours != null && total !== expectedHours && total !== alsoAllowed) {
     const diff = total - expectedHours;
     if (modular && diff > 0) {
       // У модульных предметов ФРП перечисляет все модули на выбор, поэтому
@@ -136,7 +141,9 @@ export function validatePlan(
       issues.push({
         level: 'error',
         message:
-          `Сумма часов по плану — ${total}, по федеральной рабочей программе — ${expectedHours} ` +
+          // Не «по ФРП»: норма может быть изменена приказом уже после выхода
+          // программы — см. data/hoursCorrections.ts.
+          `Сумма часов по плану — ${total}, годовая норма — ${expectedHours} ` +
           `(${diff > 0 ? 'превышение' : 'недостаток'} ${Math.abs(diff)} ч)`,
       });
     }

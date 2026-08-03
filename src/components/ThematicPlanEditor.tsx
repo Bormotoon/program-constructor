@@ -38,6 +38,8 @@ interface Props {
   expectedHours: number | null;
   /** Модульный предмет: превышение нормы — не ошибка, а повод отобрать модули. */
   modular?: boolean;
+  /** Норма по другую сторону от приказа: тоже допустима, а не ошибка. */
+  alsoAllowedHours?: number | null;
   grade: string;
 }
 
@@ -53,17 +55,21 @@ export function ThematicPlanEditor({
   onChange,
   expectedHours,
   modular,
+  alsoAllowedHours = null,
   grade,
 }: Props) {
   const [hidden, setHidden] = useState<Set<OptionalColumn>>(new Set());
 
   const issues = useMemo(
-    () => validatePlan(sections, expectedHours, modular),
-    [sections, expectedHours, modular],
+    () => validatePlan(sections, expectedHours, modular, alsoAllowedHours),
+    [sections, expectedHours, modular, alsoAllowedHours],
   );
   const total = planHours(sections);
   const hoursOff =
-    expectedHours != null && total !== expectedHours && !(modular && total > expectedHours);
+    expectedHours != null &&
+    total !== expectedHours &&
+    total !== alsoAllowedHours &&
+    !(modular && total > expectedHours);
 
   const visible = (key: OptionalColumn) => !hidden.has(key);
   const toggle = (key: OptionalColumn) =>

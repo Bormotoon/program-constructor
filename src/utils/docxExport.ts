@@ -16,9 +16,8 @@ import {
   VerticalAlign,
   WidthType,
 } from 'docx';
-import { saveAs } from 'file-saver';
 import { type ProgramData } from '../data/program';
-import { buildOutline, exportBaseName, type OutlineTable } from './programOutline';
+import { buildOutline, exportBaseName, type ExportFile, type OutlineTable } from './programOutline';
 
 const FONT = 'Times New Roman';
 const SIZE_BODY = 28; // 14 pt
@@ -276,7 +275,6 @@ export function docxFileName(data: ProgramData): string {
   return `${exportBaseName(data)}.docx`;
 }
 
-export async function exportToDocx(data: ProgramData): Promise<void> {
-  const blob = await Packer.toBlob(buildDocument(data));
-  saveAs(blob, docxFileName(data));
+export async function docxFile(data: ProgramData): Promise<ExportFile> {
+  return { blob: await Packer.toBlob(buildDocument(data)), name: docxFileName(data) };
 }

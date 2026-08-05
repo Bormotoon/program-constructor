@@ -1,10 +1,10 @@
 import { strToU8, zipSync } from 'fflate';
-import { saveAs } from 'file-saver';
 import type { ProgramData } from '../data/program';
 import {
   buildOutline,
   exportBaseName,
   paragraphsOf,
+  type ExportFile,
   type OutlineCell,
   type OutlineTable,
 } from './programOutline';
@@ -359,6 +359,6 @@ export function odtFileName(data: ProgramData): string {
   return `${exportBaseName(data)}.odt`;
 }
 
-export function exportToOdt(data: ProgramData): void {
-  saveAs(new Blob([buildOdt(data) as BlobPart], { type: MIME }), odtFileName(data));
+export function odtFile(data: ProgramData): ExportFile {
+  return { blob: new Blob([buildOdt(data) as BlobPart], { type: MIME }), name: odtFileName(data) };
 }

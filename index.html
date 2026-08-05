@@ -85,12 +85,31 @@
   </head>
   <body>
     <div id="root"></div>
+    <!--
+      🚫 «Отправить на почту» — ВЫКЛЮЧЕНО, НЕ ВКЛЮЧАТЬ БЕЗ ОТДЕЛЬНОГО РЕШЕНИЯ.
+
+      Механизм дописан и проверен целиком (диалог и маршрут — в плагине
+      pedobraz-feedback, см. docs/guestbook_runbook.md §8 в репозитории портала),
+      но в работу не пущен: не подтверждена доставляемость писем с площадки
+      Timeweb до внешних ящиков. Кнопка, обещающая письмо и молча его не
+      доставляющая, хуже отсутствующей.
+
+      Код приложения на месте и ничего не стоит: кнопки «На почту» появляются
+      только если существует window.PBDeliver (см. src/utils/mailFile.ts), а его
+      создаёт ровно этот тег. Раскомментировать — вместе с
+      `define( 'PEDOBRAZ_DELIVER_ENABLED', true )` на хосте, одним решением.
+
+      Тег стоит ДО main.tsx намеренно: отложенные скрипты выполняются в порядке
+      документа, а приложение спрашивает window.PBDeliver при первой отрисовке.
+
+      <script defer src="/wp-content/plugins/pedobraz-feedback/assets/pedobraz-deliver.js" data-pb-deliver></script>
+    -->
     <script type="module" src="/src/main.tsx"></script>
     <!--
       «Напишите нам» — виджет из плагина pedobraz-feedback (педобраз.рф).
       Приложение раздаётся с того же домена по /program-constructor/, поэтому
       относительный /wp-json/ бьёт в тот же WordPress без CORS. Персональные
-      данные не собираются — см. readme.txt плагина.
+      данные не сохраняются — см. readme.txt плагина.
     -->
     <script defer src="/wp-content/plugins/pedobraz-feedback/assets/pedobraz-feedback.js" data-pb-feedback></script>
   </body>

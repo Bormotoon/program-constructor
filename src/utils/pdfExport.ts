@@ -6,6 +6,7 @@ import {
   buildOutline,
   exportBaseName,
   paragraphsOf,
+  type ExportFile,
   type OutlineCell,
   type OutlineTable,
 } from './programOutline';
@@ -308,6 +309,6 @@ export function pdfFileName(data: ProgramData): string {
   return `${exportBaseName(data)}.pdf`;
 }
 
-export function exportToPdf(data: ProgramData): void {
-  buildPdf(data).save(pdfFileName(data));
+export function pdfFile(data: ProgramData): ExportFile {
+  return { blob: buildPdf(data).output('blob'), name: pdfFileName(data) };
 }

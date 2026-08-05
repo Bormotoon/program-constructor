@@ -231,6 +231,18 @@ export function paragraphsOf(text: string): string[] {
     .filter(Boolean);
 }
 
+/**
+ * Готовый файл выгрузки.
+ *
+ * Сборщики форматов возвращают именно пару «содержимое + имя», а не скачивают
+ * сами: тот же файл уходит и в загрузку, и письмом на почту (ExportMenu), и
+ * решать его судьбу должен вызывающий, а не сборщик.
+ */
+export interface ExportFile {
+  blob: Blob;
+  name: string;
+}
+
 /** Имя файла выгрузки без расширения. */
 export function exportBaseName(data: ProgramData): string {
   const sanitize = (s: string) => s.replace(/[^а-яА-ЯёЁa-zA-Z0-9_-]/g, '_').substring(0, 50);

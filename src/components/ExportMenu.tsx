@@ -1,9 +1,12 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { ChevronDown, Download, File, FileCode2, FileText, FileType2, Loader2 } from 'lucide-react';
+import { saveAs } from 'file-saver';
+import { ChevronDown, Download, File, FileCode2, FileText, FileType2, Loader2, Mail } from 'lucide-react';
 import { Button, cx } from './ui';
 import { SupportDialog, shouldAskForSupport } from './SupportDialog';
 import type { ProgramData } from '../data/program';
+import type { ExportFile } from '../utils/programOutline';
 import { recoverFromStaleBuild } from '../utils/staleBuild';
+import { mailAvailable, mailFile } from '../utils/mailFile';
 
 /**
  * Меню выгрузки программы.
@@ -12,6 +15,12 @@ import { recoverFromStaleBuild } from '../utils/staleBuild';
  * плотная, а на узком экране они вытеснят всё остальное. Поэтому основное
  * действие (DOCX — формат, в котором программу сдают) осталось кнопкой, а
  * остальные спрятаны под стрелкой рядом.
+ *
+ * Отправка на почту — отдельная видимая кнопка, а не пункт в глубине меню.
+ * Спрятанный выход для посетителя не существует: ровно на этом уже обожглись
+ * с передачей списка учебников в УМК, о которой пришло обращение «не могу
+ * найти». Пункт «на почту» есть и у каждого формата в меню — но главный,
+ * DOCX, доступен одним нажатием.
  *
  * Все библиотеки выгрузки грузятся по нажатию: docx весит 360 КБ, jsPDF со
  * встроенным шрифтом — ещё больше, и в стартовом бандле им делать нечего.
@@ -29,32 +38,27 @@ const FORMATS: { id: Format; label: string; hint: string; icon: typeof FileText 
   { id: 'md', label: 'Markdown', hint: 'для вики и репозиториев', icon: FileCode2 },
 ];
 
-async function run(format: Format, data: ProgramData): Promise<void> {
+async function build(format: Format, data: ProgramData): Promise<ExportFile> {
   switch (format) {
     case 'docx': {
       const m = await import('../utils/docxExport');
-      await m.exportToDocx(data);
-      return;
+      return m.docxFile(data);
     }
     case 'odt': {
       const m = await import('../utils/odtExport');
-      m.exportToOdt(data);
-      return;
+      return m.odtFile(data);
     }
     case 'pdf': {
       const m = await import('../utils/pdfExport');
-      m.exportToPdf(data);
-      return;
+      return m.pdfFile(data);
     }
     case 'txt': {
       const m = await import('../utils/textExport');
-      m.exportToText(data);
-      return;
+      return m.textFile(data);
     }
     case 'md': {
       const m = await import('../utils/textExport');
-      m.exportToMarkdown(data);
-      return;
+      return m.markdownFile(data);
     }
   }
 }
@@ -85,16 +89,27 @@ export function ExportMenu({ data, size = 'md' }: { data: ProgramData; size?: 's
     };
   }, [open]);
 
-  const start = async (format: Format) => {
+  const start = async (format: Format, to: 'disk' | 'mail' = 'disk') => {
     setOpen(false);
     setFailed(null);
     setBusy(format);
     try {
-      await run(format, data);
       // Просьба о поддержке — только после удачной выгрузки и с паузой:
       // вместе с полосой загрузки браузера окно выглядело бы помехой, а не
       // благодарностью. Показывается один раз за всё время (см. SupportDialog).
-      if (shouldAskForSupport()) window.setTimeout(() => setSupport(true), 900);
+      const thank = () => {
+        if (shouldAskForSupport()) window.setTimeout(() => setSupport(true), 900);
+      };
+
+      const file = await build(format, data);
+      if (to === 'mail') {
+        // Для почты благодарность ждёт ответа сервера: окно с просьбой,
+        // выехавшее поверх незаполненной формы адреса, — помеха, а не благодарность.
+        mailFile(file, thank);
+      } else {
+        saveAs(file.blob, file.name);
+        thank();
+      }
     } catch (e) {
       // Чанк мог исчезнуть с сервера после выката, пока вкладка была открыта:
       // тогда чиним свежей загрузкой, а не пугаем учителя ошибкой.
@@ -136,6 +151,19 @@ export function ExportMenu({ data, size = 'md' }: { data: ProgramData; size?: 's
         <ChevronDown size={15} className={cx('transition-transform duration-150', open && 'rotate-180')} />
       </Button>
 
+      {mailAvailable() && (
+        <Button
+          size={size}
+          variant="secondary"
+          className="ml-2"
+          disabled={busy !== null}
+          onClick={() => void start('docx', 'mail')}
+        >
+          <Mail size={15} />
+          На почту
+        </Button>
+      )}
+
       {open && (
         <div
           id={menuId}
@@ -145,19 +173,34 @@ export function ExportMenu({ data, size = 'md' }: { data: ProgramData; size?: 's
           {FORMATS.map((f) => {
             const Icon = f.icon;
             return (
-              <button
-                key={f.id}
-                role="menuitem"
-                type="button"
-                onClick={() => void start(f.id)}
-                className="flex w-full cursor-pointer items-start gap-2.5 px-3 py-2.5 text-left hover:bg-sunken"
-              >
-                <Icon size={16} className="mt-0.5 shrink-0 text-ink-muted" />
-                <span className="min-w-0">
-                  <span className="block text-sm font-medium">{f.label}</span>
-                  <span className="block text-xs text-ink-muted">{f.hint}</span>
-                </span>
-              </button>
+              <div key={f.id} className="flex items-stretch hover:bg-sunken">
+                <button
+                  role="menuitem"
+                  type="button"
+                  onClick={() => void start(f.id)}
+                  className="flex min-w-0 flex-1 cursor-pointer items-start gap-2.5 px-3 py-2.5 text-left"
+                >
+                  <Icon size={16} className="mt-0.5 shrink-0 text-ink-muted" />
+                  <span className="min-w-0">
+                    <span className="block text-sm font-medium">{f.label}</span>
+                    <span className="block text-xs text-ink-muted">{f.hint}</span>
+                  </span>
+                </button>
+                {/* Почта у каждого формата: главную кнопку «на почту» рядом с
+                    меню отправляет DOCX, а сдать иногда просят PDF. */}
+                {mailAvailable() && (
+                  <button
+                    role="menuitem"
+                    type="button"
+                    onClick={() => void start(f.id, 'mail')}
+                    aria-label={`Отправить ${f.label} на почту`}
+                    title="Отправить на почту"
+                    className="flex shrink-0 cursor-pointer items-center border-l border-line px-3 text-ink-muted hover:text-ink"
+                  >
+                    <Mail size={16} />
+                  </button>
+                )}
+              </div>
             );
           })}
         </div>

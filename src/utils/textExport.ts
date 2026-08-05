@@ -1,9 +1,9 @@
-import { saveAs } from 'file-saver';
 import type { ProgramData } from '../data/program';
 import {
   buildOutline,
   exportBaseName,
   paragraphsOf,
+  type ExportFile,
   type OutlineBlock,
   type OutlineCell,
   type OutlineTable,
@@ -168,18 +168,18 @@ export function programToMarkdown(data: ProgramData): string {
   return `${lines.join('\n').replace(/\n{3,}/g, '\n\n').trim()}\n`;
 }
 
-// ===================== скачивание =====================
+// ===================== файл =====================
 
-function download(text: string, name: string, mime: string): void {
+function textAsBlob(text: string, mime: string): Blob {
   // BOM нужен, чтобы Windows-приложения (в том числе Блокнот и Excel) не
   // приняли UTF-8 за однобайтовую кодировку и не показали кракозябры.
-  saveAs(new Blob([`﻿${text}`], { type: `${mime};charset=utf-8` }), name);
+  return new Blob([`﻿${text}`], { type: `${mime};charset=utf-8` });
 }
 
-export function exportToText(data: ProgramData): void {
-  download(programToText(data), `${exportBaseName(data)}.txt`, 'text/plain');
+export function textFile(data: ProgramData): ExportFile {
+  return { blob: textAsBlob(programToText(data), 'text/plain'), name: `${exportBaseName(data)}.txt` };
 }
 
-export function exportToMarkdown(data: ProgramData): void {
-  download(programToMarkdown(data), `${exportBaseName(data)}.md`, 'text/markdown');
+export function markdownFile(data: ProgramData): ExportFile {
+  return { blob: textAsBlob(programToMarkdown(data), 'text/markdown'), name: `${exportBaseName(data)}.md` };
 }

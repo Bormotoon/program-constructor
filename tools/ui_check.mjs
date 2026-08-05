@@ -45,6 +45,24 @@ function cp1251Csv() {
   return Buffer.from(out);
 }
 
+/**
+ * Заглушка чужого окружения.
+ *
+ * Приложением оно не проверяется, а в консоль сыплется: виджет «Напишите нам» и
+ * диалог отправки на почту раздаёт WordPress портала (в автономном preview их
+ * файлов нет), а Метрика и РСЯ отвечают localhost'у отказом 403. Проверка
+ * требует «ошибок в консоли: 0» — без заглушек она красная всегда и потому
+ * ничего не гарантирует (так и было с выпуска, добавившего код РСЯ).
+ *
+ * Полоса РСЯ вдобавок перехватывала нажатие «Резервная копия»: файл не
+ * приходил, и проверка падала на ровном месте.
+ */
+const stubForeign = (context) =>
+  context.route(
+    /(wp-content\/plugins\/pedobraz-feedback|mc\.yandex\.ru|yandex\.ru\/ads|an\.yandex\.ru)/,
+    (route) => route.fulfill({ status: 200, contentType: 'application/javascript', body: '' }),
+  );
+
 const browser = await chromium.launch({ executablePath: CHROME, args: ['--no-sandbox'] });
 
 for (const theme of ['light', 'dark']) {
@@ -56,13 +74,7 @@ for (const theme of ['light', 'dark']) {
     // Выгрузка проверяется настоящим скачиванием файла.
     acceptDownloads: true,
   });
-  // Виджет «Напишите нам» раздаёт WordPress (педобраз.рф), и в автономном
-  // preview его файла нет. Без заглушки 404 попадает в консоль и валит проверку
-  // «ошибок в консоли: 0» — CI красный с выпуска 1.0.5. Отдаём пустышку: сам
-  // виджет к приложению отношения не имеет и проверять тут нечего.
-  await context.route('**/wp-content/plugins/pedobraz-feedback/**', (route) =>
-    route.fulfill({ status: 200, contentType: 'application/javascript', body: '' }),
-  );
+  await stubForeign(context);
 
   const page = await context.newPage();
 
@@ -299,6 +311,7 @@ for (const theme of ['light', 'dark']) {
     locale: 'ru-RU',
     acceptDownloads: true,
   });
+  await stubForeign(context);
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e)));
@@ -363,6 +376,7 @@ for (const theme of ['light', 'dark']) {
 
 // --- узкий экран: таблицы не должны ломать вёрстку ---
 const mobile = await browser.newContext({ viewport: { width: 375, height: 812 }, locale: 'ru-RU' });
+await stubForeign(mobile);
 const mp = await mobile.newPage();
 await mp.goto(BASE, { waitUntil: 'networkidle' });
 const overflow = await mp.evaluate(

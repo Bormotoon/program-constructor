@@ -20,6 +20,7 @@ import {
   Table2,
   Wand2,
 } from 'lucide-react';
+import { AdUnit } from './components/AdUnit';
 import UmkFromCatalog from './components/UmkFromCatalog';
 import { SchoolCombobox } from './components/SchoolCombobox';
 import { ExportMenu } from './components/ExportMenu';
@@ -571,7 +572,10 @@ export default function App() {
         </div>
       )}
 
-      <header className="sticky top-0 z-30 border-b border-line bg-surface/90 backdrop-blur print:hidden">
+      <header
+        data-ap-blacklist
+        className="sticky top-0 z-30 border-b border-line bg-surface/90 backdrop-blur print:hidden"
+      >
         <div className="mx-auto flex max-w-[1680px] flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand text-white">
@@ -659,7 +663,19 @@ export default function App() {
         </Card>
 
         <aside className="order-last lg:order-none lg:w-72 lg:shrink-0 print:hidden">
-          <div className="space-y-4 lg:sticky lg:top-24">
+          {/*
+            data-ap-blacklist — авторасстановка РСЯ сюда не лезет. Она приняла эту
+            колонку за обычный сайдбар и вставила три блока между навигацией и
+            «Параметрами»: панель залипающая (lg:sticky), от трёх карточек она стала
+            выше экрана, и «Заполнить из ФРП» ушла за нижний край без возможности
+            доскроллить. Обращение 10.08.2026: «Выберите класс и нажмите "Заполнить
+            из ФРП" КУДА НАЖИМАТЬ?». Реклама не должна отодвигать органы управления —
+            она остаётся в рабочей колонке, где есть что листать.
+          */}
+          <div
+            data-ap-blacklist
+            className="space-y-4 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto"
+          >
             <Card className="hidden overflow-hidden p-1 lg:block">
               <nav aria-label="Разделы программы">
                 {TABS.map((t) => {
@@ -759,6 +775,22 @@ export default function App() {
             <Button variant="danger" className="w-full" onClick={reset}>
               <RotateCcw size={15} /> Очистить программу
             </Button>
+
+            {/*
+              Реклама — ПОСЛЕДНЯЯ в колонке, после всех органов управления.
+              Порядок здесь и есть защита: авторасстановка вставляла блоки МЕЖДУ
+              навигацией и «Параметрами» и выдавливала «Заполнить из ФРП» за край
+              экрана (обращение 10.08.2026). Что бы ни выросло ниже кнопок,
+              сдвинуть их оно уже не может.
+
+              Снаружи залипающего контейнера блок ставить нельзя: залипающая
+              панель едет вниз внутри <aside> и по дороге накрыла бы его собой.
+              Поэтому он внутри, а колонке добавлены max-h и своя прокрутка —
+              тем же приёмом, что и колонка фильтров в ФПУ. На высоком экране
+              блок виден сразу, на низком уезжает под собственную прокрутку
+              колонки, но кнопки в любом случае остаются наверху.
+            */}
+            <AdUnit blockId="R-A-18503127-22" />
           </div>
         </aside>
 
@@ -946,6 +978,12 @@ export default function App() {
               </div>
             )}
           </Card>
+
+          {/* Под рабочей областью: конец того, что листают. Внутрь карточки с
+              формой не лезем — там заполняют, а не читают. */}
+          <div className="mt-5 print:hidden">
+            <AdUnit blockId="R-A-18503127-23" />
+          </div>
         </main>
       </div>
 

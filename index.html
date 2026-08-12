@@ -42,26 +42,38 @@
       задачей, когда станет понятно, есть ли тут вообще трафик.
     -->
     <script>
-      (function (m, e, t, r, i, k, a) {
-        m[i] = m[i] || function () { (m[i].a = m[i].a || []).push(arguments); };
-        m[i].l = 1 * new Date();
-        for (var j = 0; j < document.scripts.length; j++) { if (document.scripts[j].src === r) return; }
-        k = e.createElement(t); a = e.getElementsByTagName(t)[0];
-        k.async = 1; k.src = r; a.parentNode.insertBefore(k, a);
-      })(window, document, 'script', 'https://mc.yandex.ru/metrika/tag.js', 'ym');
-      ym(108745963, 'init', { clickmap: true, trackLinks: true, accurateTrackBounce: true });
+      // Локальный прогон в боевой счётчик не пишем. `vite preview` отдаёт этот же
+      // прод-бандл, и однажды забытый на двое суток превью нагенерил в Метрике
+      // отдельную строку «127.0.0.1:4180» на 200 просмотров (05.08.2026).
+      if (!/^(localhost|127\.|\[?::1)/.test(location.hostname)) {
+        (function (m, e, t, r, i, k, a) {
+          m[i] = m[i] || function () { (m[i].a = m[i].a || []).push(arguments); };
+          m[i].l = 1 * new Date();
+          for (var j = 0; j < document.scripts.length; j++) { if (document.scripts[j].src === r) return; }
+          k = e.createElement(t); a = e.getElementsByTagName(t)[0];
+          k.async = 1; k.src = r; a.parentNode.insertBefore(k, a);
+        })(window, document, 'script', 'https://mc.yandex.ru/metrika/tag.js', 'ym');
+        ym(108745963, 'init', { clickmap: true, trackLinks: true, accurateTrackBounce: true });
+      }
     </script>
     <!-- noscript-пикселя нет намеренно: приложение — React-SPA, без JS оно не работает,
          считать такого посетителя нечем и незачем. -->
     <!--
-      РСЯ, авторасстановка, площадка 18503127 — тот же код, что печатает тема
-      портала (deploy_theme/inc/ads.php). Тема сюда не достаёт: приложение лежит
-      физической папкой рядом с WordPress, wp_head здесь не срабатывает.
-      Загрузка отложена до первого действия пользователя — бандл РСЯ самый
-      тяжёлый на странице, а блоки авторасстановки всё равно ниже сгиба, так что
-      отложенная загрузка не стоит ни одного реального показа.
+      РСЯ, площадка 18503127, ручная расстановка. Тема портала сюда не достаёт:
+      приложение лежит физической папкой рядом с WordPress, wp_head не срабатывает.
+
+      Блоков два, оба ставит App.tsx: R-A-18503127-22 в сайдбаре ПОД кнопками и
+      вне залипающего контейнера, R-A-18503127-23 под рабочей областью. Внутрь
+      панели управления реклама не ставится никогда — именно там авторасстановка
+      спрятала «Заполнить из ФРП» (обращение 10.08.2026).
+
+      `yaContextCb` — очередь: render() из компонентов кладётся в неё сразу, а
+      context.js разбирает её, когда приедет. Поэтому загрузку откладываем до
+      первого действия: бандл РСЯ самый тяжёлый на странице, а оба блока ниже
+      сгиба, и отсрочка не стоит ни одного показа.
     -->
     <script>
+      window.yaContextCb = window.yaContextCb || [];
       (function () {
         var loaded = false;
         var EV = ['scroll', 'pointerdown', 'keydown', 'touchstart', 'mousemove', 'wheel'];
@@ -69,15 +81,10 @@
           if (loaded) { return; }
           loaded = true;
           EV.forEach(function (e) { window.removeEventListener(e, load); });
-          var ctx = document.createElement('script');
-          ctx.src = 'https://yandex.ru/ads/system/context.js';
-          ctx.async = true;
-          var ap = document.createElement('script');
-          ap.src = 'https://yandex.ru/ads/system/ap-loader.js';
-          ap.async = true;
-          ap.setAttribute('data-page-id', '18503127');
-          document.head.appendChild(ctx);
-          document.head.appendChild(ap);
+          var s = document.createElement('script');
+          s.src = 'https://yandex.ru/ads/system/context.js';
+          s.async = true;
+          document.head.appendChild(s);
         }
         EV.forEach(function (e) { window.addEventListener(e, load, { passive: true }); });
       })();

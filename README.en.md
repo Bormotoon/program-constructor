@@ -63,7 +63,7 @@ Everything essential to the original is implemented:
   shared across the program, content and subject outcomes are per grade. In
   compound documents (Mathematics, grades 5–9), algebra, geometry and
   probability-and-statistics each get their own note and their own outcomes;
-- **lesson-by-lesson planning**: 14 of the 65 curricula spell it out and it is
+- **lesson-by-lesson planning**: 18 of the curricula spell it out and it is
   taken verbatim; for the rest it is expanded from the thematic plan. Where the
   curriculum offers several planning variants (textbook-bound versus
   self-designed for "The World Around Us"; different weekly loads for Russian
@@ -200,8 +200,11 @@ is attached to the
 
 ## Where the data comes from
 
-The source is the official 2025 federal curricula from [edsoo.ru](https://edsoo.ru/),
-files named `2025_{noo,ooo,soo}_frp_*.pdf`. Those PDFs and the offline copy of
+The source is every federal curriculum currently listed on the
+[ISRO page](https://edsoo.ru/rabochie-programmy/) — all 72 files, enumerated in
+`tools/frp_sources.txt`. A glob will not select them: the names differ
+(`2025_ooo_frp_*.pdf`, `01_frp_russkij-yazyk_…`, `frp-kit-yaz_vi_5-9_.pdf`) and
+they are published in different months. Those PDFs and the offline copy of
 the site are **not** part of this repository — several gigabytes of someone
 else's documents. What is committed is the result of parsing them,
 `src/data/frp/`, and that is all the app needs.
@@ -214,7 +217,7 @@ python3 -m venv .venv && .venv/bin/pip install pdfplumber
 
 npm run frp:parse    # planning tables: PDF -> build/frp/*.json (tens of minutes, resumable)
 npm run frp:content  # note, content, outcomes (fast, pdftotext)
-npm run frp:lessons  # lesson planning (present in 14 curricula)
+npm run frp:lessons  # lesson planning (present in 15 curricula)
 npm run frp:reparse  # re-parse the files where extraction failed
 npm run frp:build    # -> src/data/frp/*.json + catalog.ts
 ```
@@ -291,6 +294,7 @@ declares:
 | Music, grade 4 | module topics give 33 h against 34 declared |
 | Technology, grade 4 | nine topics summing to 34 h plus a "portfolio preparation — 1 h" row, 34 declared |
 | German, grades 10 and 11 | topics give 102 h against 105 declared |
+| Social studies (basic), grades 10 and 11 | grade 10: "section total 6" for "Economic life of society" whose topics give 28 h; grade 11: the "Legal regulation" section declares 28 h against topics summing to 30, making the grade total 70 against the 68 declared |
 
 Two signals distinguish these from extraction errors: the declared section
 totals add up to the grade total, or topic numbering runs unbroken — meaning no
@@ -354,7 +358,7 @@ tools/
 ```
 
 `src/data/frp/` is generated — there is no need to edit it by hand. It weighs
-about 22 MB across 74 subjects, but is never loaded whole: each subject is a
+about 24 MB across 81 subjects, but is never loaded whole: each subject is a
 separate file, fetched when that subject is chosen.
 
 ## Quality and checks

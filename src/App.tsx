@@ -71,7 +71,7 @@ import {
   planHours,
   planTopicCount,
 } from './data/thematicPlan';
-import { HOURS_DOC_URL, hoursChange } from './data/hoursCorrections';
+import { orderChange } from './data/orderChanges';
 import { frpLessonVariants, generateLessonPlan, lessonsFromFrp } from './data/lessonPlan';
 import { generateNormativeBase } from './data/normativeBase';
 import {
@@ -81,6 +81,7 @@ import {
   importProgramFile,
   ProgramFileError,
 } from './utils/programFile';
+import { goal } from './utils/metrika';
 
 const LEVELS: { value: FrpLevel; label: string }[] = [
   { value: 'НОО', label: 'НОО — начальное общее' },
@@ -156,17 +157,20 @@ export default function App() {
 
   /** Норму предмета поменял приказ, вышедший после ФРП; null — таких нет. */
   const change = useMemo(
-    () => (entry && data.grade ? hoursChange(entry.slug, Number(data.grade)) : null),
-    [entry, data.grade],
+    () =>
+      entry && data.grade
+        ? orderChange(entry.slug, Number(data.grade), data.academicYear)
+        : null,
+    [entry, data.grade, data.academicYear],
   );
 
   /**
    * Часы для выбранного класса — контрольное значение для таблицы. Норма из
-   * ФРП, а если её поменял приказ — та, что действует на сегодня.
+   * ФРП, а если её поменял приказ — та, что действует в учебном году программы.
    */
   const expectedHours = useMemo(() => {
     if (!entry || !data.grade) return null;
-    if (change) return change.hours;
+    if (change?.hours != null) return change.hours;
     return entry.hoursByGrade[data.grade] ?? null;
   }, [entry, data.grade, change]);
 
@@ -187,6 +191,8 @@ export default function App() {
     totalHours !== expectedHours &&
     // Приказ поменял норму — законны оба числа, старое и новое.
     totalHours !== change?.alsoAllowed &&
+    // Приказ разрешил сокращать норму — законна вся вилка до нижней границы.
+    !(change?.min != null && totalHours >= change.min && totalHours <= expectedHours) &&
     !(entry?.modular && totalHours > expectedHours);
 
   useEffect(() => {
@@ -348,6 +354,10 @@ export default function App() {
     const sections = buildPlanForGrade(plan, Number(data.grade));
     if (!sections.length) {
       window.alert(`В федеральной программе нет тематического планирования для ${data.grade} класса.`);
+      // Тупик, о котором иначе никто не узнает: учитель дошёл до главной
+      // кнопки и упёрся. Копится список «предмет + класс», которых людям не
+      // хватает, — это заявка на пополнение корпуса, а не отвлечённая метрика.
+      goal('search_empty', { where: 'constructor', q: `${data.subject} ${data.grade} кл.` });
       return;
     }
     if (
@@ -370,6 +380,11 @@ export default function App() {
         : {}),
     });
     setActiveTab('plan');
+    // Тот самый перелом пути: до этого была пустая форма, после — программа.
+    // Отсюда и до выгрузки считается доля дошедших (см. utils/metrika.ts).
+    // Предмет параметром: заодно видно, ради каких предметов конструктор
+    // вообще открывают, — а значит, какие ФРП стоит держать в первую очередь.
+    goal('constructor_program_generated', { subject: data.subject || 'не выбран' });
   }, [
     plan,
     data.grade,
@@ -712,13 +727,15 @@ export default function App() {
                 <Row label="Предмет" value={data.subject || '—'} />
                 <Row label="Класс" value={data.grade || '—'} />
                 <Row
-                  label={change?.inForce ? 'Норма по приказу' : 'Норма ФРП'}
+                  label={change?.hours != null && change.inForce ? 'Норма по приказу' : 'Норма ФРП'}
                   value={
                     expectedHours == null
                       ? '—'
-                      : change
+                      : change?.alsoAllowed != null
                         ? `${expectedHours} ч или ${change.alsoAllowed} ч`
-                        : `${expectedHours} ч`
+                        : change?.min != null
+                          ? `${change.min}–${expectedHours} ч`
+                          : `${expectedHours} ч`
                   }
                 />
                 <Row
@@ -744,7 +761,7 @@ export default function App() {
                 <div className="mt-3 border-t border-line pt-3">
                   <Notice tone="warn" icon={<AlertTriangle size={14} />}>
                     <p className="font-medium">
-                      В самой федеральной программе перечень тем не сходится с объявленным итогом:
+                      Расхождения в самом источнике программы — не в конструкторе:
                     </p>
                     <ul className="mt-1.5 list-disc space-y-1 pl-4">
                       {gradeIssues.map((issue) => (
@@ -896,11 +913,11 @@ export default function App() {
                     <p className="mt-1.5">
                       <a
                         className="font-medium underline underline-offset-2"
-                        href={HOURS_DOC_URL}
+                        href={change.docUrl}
                         target="_blank"
                         rel="noopener noreferrer"
                       >
-                        Письмо Минпросвещения от 02.03.2026 № 03-320 (изменения по классам)
+                        {change.docLabel}
                       </a>
                     </p>
                   </Notice>
@@ -913,6 +930,7 @@ export default function App() {
                     expectedHours={expectedHours}
                     modular={entry?.modular}
                     alsoAllowedHours={change?.alsoAllowed ?? null}
+                    minAllowedHours={change?.min ?? null}
                     grade={data.grade}
                   />
                 ) : (
@@ -1072,6 +1090,17 @@ function TextSection({
   );
 }
 
+/**
+ * Общепринятые сокращения названий предметов. В списке они приписываются к
+ * полному названию: учитель ищет «ОБЗР», а ФРП называет предмет «Основы
+ * безопасности и защиты Родины» — без подсказки предмет считают отсутствующим.
+ * В документ уходит полное название, как в ФРП.
+ */
+const SUBJECT_ABBR: Record<string, string> = {
+  'Основы безопасности и защиты Родины': 'ОБЗР',
+  'Основы религиозных культур и светской этики': 'ОРКСЭ',
+};
+
 function TitleTab({
   data,
   entry,
@@ -1175,6 +1204,7 @@ function TitleTab({
                   {levelSubjects.map((s) => (
                     <option key={s.slug} value={s.slug}>
                       {s.subject}
+                      {SUBJECT_ABBR[s.subject] ? ` (${SUBJECT_ABBR[s.subject]})` : ''}
                       {s.variant ? ` · ${s.variant} уровень` : ''}
                     </option>
                   ))}

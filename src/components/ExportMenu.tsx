@@ -7,6 +7,7 @@ import type { ProgramData } from '../data/program';
 import type { ExportFile } from '../utils/programOutline';
 import { recoverFromStaleBuild } from '../utils/staleBuild';
 import { mailAvailable, mailFile } from '../utils/mailFile';
+import { goal } from '../utils/metrika';
 
 /**
  * Меню выгрузки программы.
@@ -108,6 +109,10 @@ export function ExportMenu({ data, size = 'md' }: { data: ProgramData; size?: 's
         mailFile(file, thank);
       } else {
         saveAs(file.blob, file.name);
+        // Цель — после saveAs, а не по нажатию: между ними сборка документа,
+        // которая может и упасть. Формат идёт параметром, чтобы не заводить
+        // пять целей на один и тот же итог.
+        goal('constructor_program_downloaded', { format });
         thank();
       }
     } catch (e) {

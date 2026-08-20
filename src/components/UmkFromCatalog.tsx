@@ -12,6 +12,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { BookOpen, Check, ExternalLink, X } from 'lucide-react';
 import type { FpuHandoff } from '../utils/fpuHandoff';
 import { catalogUrl, clearHandoff, describeHandoff, readHandoff } from '../utils/fpuHandoff';
+import { goal } from '../utils/metrika';
 
 export default function UmkFromCatalog({
   subject,
@@ -53,6 +54,10 @@ export default function UmkFromCatalog({
     onApply(next);
     clearHandoff();
     setPending(null);
+    // Вторая половина передачи из перечня. Своя цель нужна потому, что «нажал
+    // передать» в каталоге и «список лёг в программу» — разные события: мост
+    // между вкладками однажды уже был на месте, но до людей не доходил.
+    goal('constructor_umk_applied', { mode });
     setDone(
       `Список добавлен: ${pending.books.length} ${plural(pending.books.length)}. Проверьте текст ниже.`,
     );

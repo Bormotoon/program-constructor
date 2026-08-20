@@ -40,6 +40,8 @@ interface Props {
   modular?: boolean;
   /** Норма по другую сторону от приказа: тоже допустима, а не ошибка. */
   alsoAllowedHours?: number | null;
+  /** Нижняя граница нормы, если приказ разрешил её сокращать. */
+  minAllowedHours?: number | null;
   grade: string;
 }
 
@@ -56,19 +58,21 @@ export function ThematicPlanEditor({
   expectedHours,
   modular,
   alsoAllowedHours = null,
+  minAllowedHours = null,
   grade,
 }: Props) {
   const [hidden, setHidden] = useState<Set<OptionalColumn>>(new Set());
 
   const issues = useMemo(
-    () => validatePlan(sections, expectedHours, modular, alsoAllowedHours),
-    [sections, expectedHours, modular, alsoAllowedHours],
+    () => validatePlan(sections, expectedHours, modular, alsoAllowedHours, minAllowedHours),
+    [sections, expectedHours, modular, alsoAllowedHours, minAllowedHours],
   );
   const total = planHours(sections);
   const hoursOff =
     expectedHours != null &&
     total !== expectedHours &&
     total !== alsoAllowedHours &&
+    !(minAllowedHours != null && total >= minAllowedHours && total <= expectedHours) &&
     !(modular && total > expectedHours);
 
   const visible = (key: OptionalColumn) => !hidden.has(key);

@@ -676,6 +676,25 @@ def parse_title_page(pdf: pdfplumber.PDF) -> dict:
 
 RE_COURSE_MENTION = re.compile(r"учебного\s+курса\s*[«\"](.+?)[»\"]", re.IGNORECASE)
 
+# Заголовок блока планирования. Хвостовая цифра — маркер сноски: в ряде
+# программ заголовок извлекается как «ТЕМАТИЧЕСКОЕ ПЛАНИРОВАНИЕ 1». Уточнение
+# в скобках — у Труда: «ТЕМАТИЧЕСКОЕ ПЛАНИРОВАНИЕ (БАЗОВЫЙ ВАРИАНТ)», и без
+# него предмет не разбирался вовсе.
+RE_THEMATIC_HEAD = re.compile(
+    r"^\s*ТЕМАТИЧЕСКОЕ\s+ПЛАНИРОВАНИЕ(?:\s*\([^)]*\))?\s*\d?\s*$", re.M
+)
+
+# Где блок планирования заканчивается. Кроме поурочного планирования это
+# «ПРИМЕР ТЕМАТИЧЕСКОГО ПЛАНИРОВАНИЯ С УЧЕТОМ ВАРИАТИВНЫХ МОДУЛЕЙ» у Труда:
+# такие блоки повторяют 7–9 классы ещё по два раза, и без границы один класс
+# получал план на несколько вариантов сразу. Строки оглавления отсекаются по
+# отбивке точками — заголовок на своей странице идёт без неё.
+RE_THEMATIC_END = re.compile(
+    r"^\s*(?:ПОУРОЧНОЕ\s+ПЛАНИРОВАНИЕ\s*\d?"
+    r"|ПРИМЕР\s+ТЕМАТИЧЕСКОГО\s+ПЛАНИРОВАНИЯ(?![^\n]*\.{3})[^\n]*)\s*$",
+    re.M,
+)
+
 
 def probe_layout(pdf: pdfplumber.PDF, first: int, last: int) -> dict[int, int]:
     """
@@ -716,7 +735,7 @@ def thematic_blocks(pdf: pdfplumber.PDF) -> list[tuple[int, int, str]]:
     индексы 0-based включительно.
     """
     starts: list[int] = []
-    stop: int | None = None
+    stops: list[int] = []
     course_at: dict[int, str] = {}
     last_course = ""
 
@@ -724,13 +743,11 @@ def thematic_blocks(pdf: pdfplumber.PDF) -> list[tuple[int, int, str]]:
         text = page.extract_text() or ""
         for m in RE_COURSE_MENTION.finditer(text):
             last_course = m.group(1).strip()
-        # Хвостовая цифра — маркер сноски: в ряде программ заголовок извлекается
-        # как «ТЕМАТИЧЕСКОЕ ПЛАНИРОВАНИЕ 1», и строгий шаблон его не находил.
-        if re.search(r"^\s*ТЕМАТИЧЕСКОЕ\s+ПЛАНИРОВАНИЕ\s*\d?\s*$", text, re.M):
+        if RE_THEMATIC_HEAD.search(text):
             starts.append(i)
             course_at[i] = last_course
-        elif stop is None and re.search(r"^\s*ПОУРОЧНОЕ\s+ПЛАНИРОВАНИЕ\s*\d?\s*$", text, re.M):
-            stop = i
+        elif RE_THEMATIC_END.search(text):
+            stops.append(i)
 
     if not starts:
         return []
@@ -738,7 +755,11 @@ def thematic_blocks(pdf: pdfplumber.PDF) -> list[tuple[int, int, str]]:
     blocks: list[tuple[int, int, str]] = []
     for j, s in enumerate(starts):
         e = starts[j + 1] - 1 if j + 1 < len(starts) else len(pdf.pages) - 1
-        if stop is not None and s < stop <= e:
+        # Граница ищется внутри блока, а не одна на документ: раньше бралась
+        # первая на весь PDF, и у документа с несколькими блоками она могла
+        # оказаться до начала любого из них.
+        stop = next((t for t in stops if s < t <= e), None)
+        if stop is not None:
             e = stop - 1
         if e >= s:
             blocks.append((s, e, course_at.get(s, "")))

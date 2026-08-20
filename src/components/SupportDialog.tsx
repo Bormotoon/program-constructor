@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowUpRight, Check, Copy, Heart, X } from 'lucide-react';
 import { Button, IconButton } from './ui';
+import { goal } from '../utils/metrika';
 
 /**
  * Просьба о поддержке — один раз за всё время, после первой удачной выгрузки.
@@ -116,10 +117,14 @@ export function SupportDialog({ onClose }: { onClose: () => void }) {
             </div>
           </div>
 
+          {/* Показ окна считается косвенно (оно всплывает после выгрузки), а
+              вот дошло ли до перехода на страницу поддержки — не считалось
+              ничем: окупается просьба или только мешает, сказать было нельзя. */}
           <a
             href={LINK}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={() => goal('support_click')}
             className="flex items-center gap-3 rounded-lg border border-brand/30 bg-brand-soft px-3.5 py-3 transition-colors duration-150 hover:border-brand"
           >
             <span className="min-w-0 flex-1">

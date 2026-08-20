@@ -79,6 +79,10 @@ export interface ProgramData {
 }
 
 const currentYear = new Date().getFullYear();
+// Учебный год по умолчанию — тот, к которому программу и пишут: с июня это
+// уже наступающий. От него зависит норма часов (data/orderChanges.ts),
+// поэтому «календарный год + 1» в январе-мае давал бы год на год вперёд.
+const academicStart = new Date().getMonth() >= 5 ? currentYear : currentYear - 1;
 
 export const defaultProgram: ProgramData = {
   regionalAuthority: '',
@@ -97,7 +101,7 @@ export const defaultProgram: ProgramData = {
   variant: '',
   grade: '',
   teacherName: '',
-  academicYear: `${currentYear}-${currentYear + 1}`,
+  academicYear: `${academicStart}-${academicStart + 1}`,
 
   normativeBase: '',
   subjectContent: '',

@@ -94,9 +94,14 @@ export function validatePlan(
   modular = false,
   /**
    * Второе допустимое значение: у предмета, которому приказ поменял норму,
-   * законны и старое число, и новое — выбирает учитель (data/hoursCorrections.ts).
+   * законны и старое число, и новое — выбирает учитель (data/orderChanges.ts).
    */
   alsoAllowed: number | null = null,
+  /**
+   * Нижняя граница нормы: приказ разрешил сокращать её в 1 классе на
+   * адаптационный период, и любое число часов до неё — не ошибка.
+   */
+  minAllowed: number | null = null,
 ): PlanIssue[] {
   const issues: PlanIssue[] = [];
 
@@ -126,7 +131,9 @@ export function validatePlan(
   }
 
   const total = planHours(sections);
-  if (expectedHours != null && total !== expectedHours && total !== alsoAllowed) {
+  const withinCut = minAllowed != null && expectedHours != null
+    && total >= minAllowed && total <= expectedHours;
+  if (expectedHours != null && total !== expectedHours && total !== alsoAllowed && !withinCut) {
     const diff = total - expectedHours;
     if (modular && diff > 0) {
       // У модульных предметов ФРП перечисляет все модули на выбор, поэтому
@@ -142,7 +149,7 @@ export function validatePlan(
         level: 'error',
         message:
           // Не «по ФРП»: норма может быть изменена приказом уже после выхода
-          // программы — см. data/hoursCorrections.ts.
+          // программы — см. data/orderChanges.ts.
           `Сумма часов по плану — ${total}, годовая норма — ${expectedHours} ` +
           `(${diff > 0 ? 'превышение' : 'недостаток'} ${Math.abs(diff)} ч)`,
       });

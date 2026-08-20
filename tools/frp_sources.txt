@@ -1,0 +1,86 @@
+# Исходные ФРП: все программы со страницы https://edsoo.ru/rabochie-programmy
+#
+# Список нужен потому, что имена файлов на edsoo.ru не подчиняются ни одной
+# маске: рядом с «2025_ooo_frp_*.pdf» лежат «01_frp_russkij-yazyk_5-9-…»,
+# «frp-kit-yaz_vi_5-9_.pdf» и «frp_obshhestvoznanie-10-11-klassy_baza.pdf», и
+# выложены они в разные месяцы. Прежняя маска `2025/07/2025_*frp*.pdf` молча
+# собирала 65 файлов из 72 — без Труда 5–9 и Обществознания 10–11 базового
+# конструктор жил год, и заметить это по зелёным проверкам было нельзя.
+#
+# Правило пополнения: список повторяет страницу ИСРО ровно. Программа, снятая
+# со страницы, убирается и отсюда — иначе сборщик оставит в каталоге ту
+# редакцию, где случайно больше тем (см. дедупликацию в build_frp_data.py).
+#
+# Строки, начинающиеся с #, и пустые пропускаются (см. npm-скрипты frp:*).
+edsoo/wp-content/uploads/2025/09/01_frp_russkij-yazyk_5-9-klassy_itog-na-sajt_1-2.pdf
+edsoo/wp-content/uploads/2025/07/17_frp_biologiya_7_9_klassy_ugl_itog_na_sajt.pdf
+edsoo/wp-content/uploads/2025/07/2025_noo_frp_anglijskij-yazyk_2-4.pdf
+edsoo/wp-content/uploads/2025/07/2025_noo_frp_fizicheskaya-kultura_1-4.pdf
+edsoo/wp-content/uploads/2025/07/2025_noo_frp_franczuzskij-yazyk_2-4.pdf
+edsoo/wp-content/uploads/2025/07/2025_noo_frp_ispanskij-yazyk_2-4.pdf
+edsoo/wp-content/uploads/2025/07/2025_noo_frp_izo_1-4.pdf
+edsoo/wp-content/uploads/2025/07/2025_noo_frp_kitajskij-yazyk_2-4.pdf
+edsoo/wp-content/uploads/2025/07/2025_noo_frp_literaturnoe-chtenie_1-4.pdf
+edsoo/wp-content/uploads/2025/07/2025_noo_frp_matematika_1-4.pdf
+edsoo/wp-content/uploads/2025/07/2025_noo_frp_muzyka_1-4.pdf
+edsoo/wp-content/uploads/2025/07/2025_noo_frp_nemeczkij-yazyk_2-4.pdf
+edsoo/wp-content/uploads/2025/07/2025_noo_frp_okruzhayushhij-mir_1-4.pdf
+edsoo/wp-content/uploads/2025/07/2025_noo_frp_orkse_4.pdf
+edsoo/wp-content/uploads/2025/07/2025_noo_frp_russkij-yazyk_1-4.pdf
+edsoo/wp-content/uploads/2025/07/2025_noo_frp_trud_1-4.pdf
+edsoo/wp-content/uploads/2025/07/2025_ooo_frp-nemeczkij_5-9.pdf
+edsoo/wp-content/uploads/2025/07/2025_ooo_frp_angl_5-9.pdf
+edsoo/wp-content/uploads/2025/07/2025_ooo_frp_angl_vi_5-9.pdf
+edsoo/wp-content/uploads/2025/07/2025_ooo_frp_biologiya_5-9_baza.pdf
+edsoo/wp-content/uploads/2025/07/2025_ooo_frp_fizika-7-9_baz.pdf
+edsoo/wp-content/uploads/2025/07/2025_ooo_frp_fizika_7-9_ugl.pdf
+edsoo/wp-content/uploads/2025/07/2025_ooo_frp_fizkultura-5-9.pdf
+edsoo/wp-content/uploads/2025/07/2025_ooo_frp_geografiya-5-9.pdf
+edsoo/wp-content/uploads/2025/07/2025_ooo_frp_himiya_8-9_baza.pdf
+edsoo/wp-content/uploads/2025/07/2025_ooo_frp_himiya_uglub_8-9.pdf
+edsoo/wp-content/uploads/2025/07/2025_ooo_frp_informatika-7-9_baza.pdf
+edsoo/wp-content/uploads/2025/07/2025_ooo_frp_informatika-7-9_ugl.pdf
+edsoo/wp-content/uploads/2025/07/2025_ooo_frp_istoriya_5-9.pdf
+edsoo/wp-content/uploads/2025/07/2025_ooo_frp_izo-5-7.pdf
+edsoo/wp-content/uploads/2025/07/2025_ooo_frp_literatura_5-9.pdf
+edsoo/wp-content/uploads/2025/07/2025_ooo_frp_matematika-5-9_baza.pdf
+edsoo/wp-content/uploads/2025/07/2025_ooo_frp_matematika-5-9_ugl.pdf
+edsoo/wp-content/uploads/2025/07/2025_ooo_frp_muzyka-5-8.pdf
+edsoo/wp-content/uploads/2025/07/2025_ooo_frp_obshhestvo-6-9.pdf
+edsoo/wp-content/uploads/2025/07/2025_ooo_frp_obzr-8-9.pdf
+edsoo/wp-content/uploads/2025/07/2025_ooo_frp_vinemeczkij_5-9.pdf
+edsoo/wp-content/uploads/2025/07/2025_soo_frp_angl-yaz_10-11_baz.pdf
+edsoo/wp-content/uploads/2025/07/2025_soo_frp_anglyaz_10-11_ugl.pdf
+edsoo/wp-content/uploads/2025/07/2025_soo_frp_anglyaz_10-11_vi.pdf
+edsoo/wp-content/uploads/2025/07/2025_soo_frp_biologiya_10_11_baz.pdf
+edsoo/wp-content/uploads/2025/07/2025_soo_frp_biologiya_10_11_ugl.pdf
+edsoo/wp-content/uploads/2025/07/2025_soo_frp_fizika_10_11_baz.pdf
+edsoo/wp-content/uploads/2025/07/2025_soo_frp_fizika_10_11_ugl.pdf
+edsoo/wp-content/uploads/2025/07/2025_soo_frp_fizkultura_10_11.pdf
+edsoo/wp-content/uploads/2025/07/2025_soo_frp_geografiya_10_11_baz.pdf
+edsoo/wp-content/uploads/2025/07/2025_soo_frp_geografiya_10_11_ugl.pdf
+edsoo/wp-content/uploads/2025/07/2025_soo_frp_himiya_10_11_baz.pdf
+edsoo/wp-content/uploads/2025/07/2025_soo_frp_himiya_10_11_ugl.pdf
+edsoo/wp-content/uploads/2025/07/2025_soo_frp_informatika_10_11_baz.pdf
+edsoo/wp-content/uploads/2025/07/2025_soo_frp_informatika_10_11_ugl.pdf
+edsoo/wp-content/uploads/2025/07/2025_soo_frp_istoriya_10_11_baza.pdf
+edsoo/wp-content/uploads/2025/07/2025_soo_frp_istoriya_10_11_ugl.pdf
+edsoo/wp-content/uploads/2025/07/2025_soo_frp_literatura_10_11_baz.pdf
+edsoo/wp-content/uploads/2025/07/2025_soo_frp_literatura_10_11_ugl.pdf
+edsoo/wp-content/uploads/2025/07/2025_soo_frp_matematika_10_11_baz.pdf
+edsoo/wp-content/uploads/2025/07/2025_soo_frp_matematika_10_11_ugl.pdf
+edsoo/wp-content/uploads/2025/07/2025_soo_frp_nem-yaz_10-11_vi.pdf
+edsoo/wp-content/uploads/2025/07/2025_soo_frp_nemyaz_10-11_baz.pdf
+edsoo/wp-content/uploads/2025/07/2025_soo_frp_nemyaz_10-11_ugl.pdf
+edsoo/wp-content/uploads/2025/07/2025_soo_frp_obshhestvoznanie_10_11_ugl.pdf
+edsoo/wp-content/uploads/2025/07/2025_soo_frp_obzr_10_11.pdf
+edsoo/wp-content/uploads/2025/07/2025_soo_frp_russkij-yazyk_10_11.pdf
+edsoo/wp-content/uploads/2025/07/2025_soo_frp_vi_franczuzskij_10-11.pdf
+edsoo/wp-content/uploads/2025/07/2025_soo_frp_vi_ispanskij_10-11.pdf
+edsoo/wp-content/uploads/2025/07/2025_soo_frp_vi_kit-yaz_10-11.pdf
+edsoo/wp-content/uploads/2025/08/20_frp_trud_tehnologiya_5_9_klassy_itog_na_sajt.pdf
+edsoo/wp-content/uploads/2025/07/26_frp_franczuzskij_vi_5_9_klassy_na_sajt.pdf
+edsoo/wp-content/uploads/2025/02/frp-kit-yaz_vi_5-9_.pdf
+edsoo/wp-content/uploads/2025/02/frp_ispanskij_yazyk_vi_5_9_.pdf
+edsoo/wp-content/uploads/2023/09/frp_obshhestvoznanie-10-11-klassy_baza.pdf
+edsoo/wp-content/uploads/2024/03/frp_ooo_franczuzskij_yazyk_29032024_itog.pdf

@@ -34,9 +34,23 @@ from frp_verify import verify
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "build" / "frp"
-PDFDIR = ROOT / "edsoo" / "wp-content" / "uploads" / "2025" / "07"
+SOURCES = ROOT / "tools" / "frp_sources.txt"
 PARSER = ROOT / "tools" / "frp_parser.py"
 PYTHON = ROOT / ".venv" / "bin" / "python"
+
+
+def pdf_by_stem() -> dict[str, Path]:
+    """
+    Исходный PDF по имени разобранного файла.
+
+    Пути берутся из списка источников, а не складываются из одного каталога:
+    ИСРО выкладывает программы в разные месяцы `uploads`, и переразбор,
+    искавший всё в `2025/07`, для остальных молча не находил файла и пропускал
+    их — то есть не делал ровно того, для чего он есть.
+    """
+    lines = SOURCES.read_text(encoding="utf-8").splitlines()
+    paths = [ROOT / ln.strip() for ln in lines if ln.strip() and not ln.startswith("#")]
+    return {p.stem: p for p in paths}
 
 
 def needs_reparse(path: Path) -> str | None:
@@ -67,12 +81,13 @@ def main() -> int:
         print(f"нет каталога {OUT}")
         return 1
 
+    sources = pdf_by_stem()
     targets: list[Path] = []
     for path in sorted(OUT.glob("*.json")):
         reason = needs_reparse(path)
         if reason:
-            pdf = PDFDIR / f"{path.stem}.pdf"
-            if pdf.exists():
+            pdf = sources.get(path.stem)
+            if pdf and pdf.exists():
                 print(f"  {path.stem}: {reason}")
                 targets.append(pdf)
 

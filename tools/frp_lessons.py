@@ -137,7 +137,8 @@ def extract(path: Path) -> dict:
             # 5–9 поурочный план повторяется вторым блоком, и его заголовок
             # «5 КЛАСС» оказывался ниже — 170 уроков утекали в шестой класс.
             # От ложных срабатываний защищает ограничение длины строки.
-            for line in text.splitlines():
+            lines = text.splitlines()
+            for idx, line in enumerate(lines):
                 t = normalise(line)
                 mv = RE_VARIANT.match(t)
                 if mv:
@@ -153,6 +154,13 @@ def extract(path: Path) -> dict:
                 # тогда пояснение и служит названием варианта. Ограничение
                 # длины нужно, чтобы под шаблон не попадали ячейки таблицы.
                 note = mc.group(2).strip() if mc else ""
+                # Пояснение переносится по ширине страницы: у Труда это
+                # «8 класс (инвариантные + вариативные модули «Растениеводство»,
+                # «Животноводство»)». Незакрытая скобка и означает перенос —
+                # иначе название варианта обрывалось на запятой, а выбирать
+                # план учителю приходилось по половине фразы.
+                if note.count("(") > note.count(")") and idx + 1 < len(lines):
+                    note = f"{note} {normalise(lines[idx + 1]).strip()}".strip()
                 if mc and (len(t) <= 20 or note):
                     grade = mc.group(1)
                     if not variants:

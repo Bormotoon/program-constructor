@@ -66,11 +66,13 @@
           k.async = 1; k.src = r; a.parentNode.insertBefore(k, a);
         })(window, document, 'script', 'https://mc.yandex.ru/metrika/tag.js', 'ym');
         ym(108745963, 'init', { clickmap: true, trackLinks: true, accurateTrackBounce: true });
-        // Цели инструментов: tool_started (первое действие) и tool_engaged
-        // (минута активного времени после него). Текст сниппета ДОСЛОВНО
-        // совпадает с educational_stack/nginx/metrika.conf — так его можно
-        // сверить на всех шестнадцати поверхностях одним grep.
-        (function(){var C=108745963,p=location.pathname.split("/"),t="",i;for(i=0;i<p.length;i++){if(p[i]&&p[i]!=="apps"){t=p[i];break}}if(!t){t="root"}function g(n){if(window.ym){try{ym(C,"reachGoal",n,{tool:t})}catch(e){}}}var s=0,act=0,last=Date.now(),done=0;function start(){if(s){return}s=1;last=Date.now();g("tool_started")}["pointerdown","keydown","touchstart"].forEach(function(e){document.addEventListener(e,start,{passive:true})});function tick(){if(!s){return}if(document.visibilityState!=="hidden"){act+=Date.now()-last}last=Date.now();if(!done&&act>=60000){done=1;g("tool_engaged")}}setInterval(tick,5000);document.addEventListener("visibilitychange",tick)})();
+        // Цели инструментов: tool_started (первое действие), tool_engaged (минута
+        // активного времени), tool_deep (пять минут), tool_returned (заход в другой
+        // день), tool_result (ссылка с download — инструмент отдал файл). Текст
+        // сниппета ДОСЛОВНО совпадает с educational_stack/nginx/metrika.conf — так
+        // его можно сверить на всех поверхностях одним grep. Наружу торчит
+        // window.pbGoal(имя, вид) — им приложение отмечает свой результат.
+        (function(){var C=108745963,p=location.pathname.split("/"),q=[],i;for(i=0;i<p.length;i++){if(p[i]&&p[i]!=="apps"){q.push(p[i])}}var t=q[0]||"root",s="",b,d;if(q.length>1){b=q[q.length-1];d=b.lastIndexOf(".");if(d>0){s=b.substring(0,d);if(s.length>3&&s.substring(s.length-3)==="_ru"){s=s.substring(0,s.length-3)}if(s==="index"){s=""}}}function g(n,k){var v=k||s,o={};if(v){o[t]=v}if(window.ym){try{ym(C,"reachGoal",n,{tool:v?o:t})}catch(e){}}}window.pbGoal=g;var st=0,act=0,last=Date.now(),e1=0,e2=0,sv=0;function start(){if(st){return}st=1;last=Date.now();g("tool_started");try{var k="pb_day_"+t,y=new Date().toDateString(),z=localStorage.getItem(k);if(z!==y){if(z){g("tool_returned")}localStorage.setItem(k,y)}}catch(e){}}["pointerdown","keydown","touchstart"].forEach(function(e){document.addEventListener(e,start,{passive:true})});function tick(){if(!st){return}if(document.visibilityState!=="hidden"){act+=Date.now()-last}last=Date.now();if(!e1&&act>=60000){e1=1;g("tool_engaged")}if(!e2&&act>=300000){e2=1;g("tool_deep")}}setInterval(tick,5000);document.addEventListener("visibilitychange",tick);function saved(a){try{if(!a||!a.hasAttribute||!a.hasAttribute("download")){return}if(Date.now()-sv<1000){return}sv=Date.now();var f=a.download||a.getAttribute("href")||"",n=f.lastIndexOf("."),x=n>0?f.substring(n+1).toLowerCase():"";if(!x||x.length>6||x.indexOf("/")>=0){x="файл"}g("tool_result",x)}catch(e){}}document.addEventListener("click",function(v){var a=v.target&&v.target.closest?v.target.closest("a[download]"):0;if(a){saved(a)}},true);try{var ac=HTMLAnchorElement.prototype.click;HTMLAnchorElement.prototype.click=function(){saved(this);return ac.apply(this,arguments)}}catch(e){}})();
       }
     </script>
     <!-- noscript-пикселя нет намеренно: приложение — React-SPA, без JS оно не работает,

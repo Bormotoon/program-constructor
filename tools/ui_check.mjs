@@ -151,6 +151,24 @@ for (const theme of ['light', 'dark']) {
   const totalCell = await page.locator('text=ОБЩЕЕ КОЛИЧЕСТВО ЧАСОВ').first().isVisible();
   note(totalCell, 'строка «ОБЩЕЕ КОЛИЧЕСТВО ЧАСОВ» отображается');
 
+  // Подписи полей таблицы должны быть разными. Нумерация тем в ФРП идёт внутри
+  // раздела, поэтому «Часов по теме 1» было у каждого раздела своё: в таблице
+  // из десяти разделов десять полей звались одинаково, и на слух они
+  // неразличимы. Проверяется здесь, на настоящей таблице из ФРП.
+  const duplicateLabels = await page.evaluate(() => {
+    const seen = new Map();
+    for (const el of document.querySelectorAll('table [aria-label]')) {
+      const k = el.getAttribute('aria-label');
+      seen.set(k, (seen.get(k) ?? 0) + 1);
+    }
+    return [...seen].filter(([, n]) => n > 1).map(([k, n]) => `${k} ×${n}`);
+  });
+  note(
+    duplicateLabels.length === 0,
+    `одинаковых подписей у полей таблицы: ${duplicateLabels.length}` +
+      (duplicateLabels.length ? ` — ${duplicateLabels.slice(0, 3).join(', ')}` : ''),
+  );
+
   await page.screenshot({ path: `${OUT}/02-plan-${theme}.png`, fullPage: false });
 
   // Диалог импорта грузится лениво (тянет парсер xlsx) — проверяем,

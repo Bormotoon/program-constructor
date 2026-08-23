@@ -139,7 +139,7 @@ export function ThematicPlanEditor({
           </thead>
 
           <tbody>
-            {sections.map((section) => (
+            {sections.map((section, si) => (
               <Fragment key={section.id}>
                 <tr className="bg-sunken/70">
                   <td className={TD} colSpan={leftSpan + 1 + rightSpan - 1}>
@@ -147,7 +147,7 @@ export function ThematicPlanEditor({
                       className={cx(CELL, 'font-semibold')}
                       value={section.name}
                       placeholder="Наименование раздела"
-                      aria-label="Наименование раздела"
+                      aria-label={`Наименование раздела ${si + 1}`}
                       onChange={(e) =>
                         onChange(updateSection(sections, section.id, { name: e.target.value }))
                       }
@@ -164,14 +164,21 @@ export function ThematicPlanEditor({
                   </td>
                 </tr>
 
-                {section.topics.map((topic, i) => (
+                {section.topics.map((topic, i) => {
+                  // Подпись строки. Внутри раздела нумерация начинается заново,
+                  // поэтому «тема 1» была у каждого раздела своя — и в таблице
+                  // из десяти разделов десять полей звались одинаково. Берём
+                  // номер темы, как он напечатан в таблице; у строк, добавленных
+                  // вручную, его нет — тогда номер раздела и позиция в нём.
+                  const nom = topic.num.trim() || `${si + 1}.${i + 1}`;
+                  return (
                   <tr key={topic.id} className="group">
                     {visible('num') && (
                       <td className={TD}>
                         <input
                           className={cx(CELL, 'tabular text-center')}
                           value={topic.num}
-                          aria-label={`Номер темы ${i + 1}`}
+                          aria-label={`Номер темы ${nom}`}
                           onChange={(e) =>
                             onChange(
                               updateTopic(sections, section.id, topic.id, { num: e.target.value }),
@@ -185,7 +192,7 @@ export function ThematicPlanEditor({
                         rows={2}
                         className={cx(CELL, 'resize-y')}
                         value={topic.name}
-                        aria-label={`Наименование темы ${i + 1}`}
+                        aria-label={`Наименование темы ${nom}`}
                         onChange={(e) =>
                           onChange(
                             updateTopic(sections, section.id, topic.id, { name: e.target.value }),
@@ -200,7 +207,7 @@ export function ThematicPlanEditor({
                         max={1000}
                         className={cx(CELL, 'text-center')}
                         value={topic.hours}
-                        aria-label={`Часов по теме ${i + 1}`}
+                        aria-label={`Часов по теме ${nom}`}
                         onChange={(e) =>
                           onChange(
                             updateTopic(sections, section.id, topic.id, {
@@ -216,7 +223,7 @@ export function ThematicPlanEditor({
                           rows={3}
                           className={cx(CELL, 'resize-y text-[13px] leading-snug')}
                           value={topic.content}
-                          aria-label={`Программное содержание темы ${i + 1}`}
+                          aria-label={`Программное содержание темы ${nom}`}
                           onChange={(e) =>
                             onChange(
                               updateTopic(sections, section.id, topic.id, {
@@ -233,7 +240,7 @@ export function ThematicPlanEditor({
                           rows={3}
                           className={cx(CELL, 'resize-y text-[13px] leading-snug')}
                           value={topic.activity}
-                          aria-label={`Виды деятельности по теме ${i + 1}`}
+                          aria-label={`Виды деятельности по теме ${nom}`}
                           onChange={(e) =>
                             onChange(
                               updateTopic(sections, section.id, topic.id, {
@@ -246,27 +253,27 @@ export function ThematicPlanEditor({
                     )}
                     <td className={cx(TD, 'whitespace-nowrap text-center')}>
                       <IconButton
-                        label="Переместить выше"
+                        label={`Переместить выше тему ${nom}`}
                         disabled={i === 0}
                         onClick={() => onChange(moveTopic(sections, section.id, topic.id, -1))}
                       >
                         <ArrowUp size={14} />
                       </IconButton>
                       <IconButton
-                        label="Переместить ниже"
+                        label={`Переместить ниже тему ${nom}`}
                         disabled={i === section.topics.length - 1}
                         onClick={() => onChange(moveTopic(sections, section.id, topic.id, 1))}
                       >
                         <ArrowDown size={14} />
                       </IconButton>
                       <IconButton
-                        label="Скопировать строку"
+                        label={`Скопировать тему ${nom}`}
                         onClick={() => onChange(duplicateTopic(sections, section.id, topic.id))}
                       >
                         <Copy size={14} />
                       </IconButton>
                       <IconButton
-                        label="Удалить строку"
+                        label={`Удалить тему ${nom}`}
                         className="hover:text-danger"
                         onClick={() => onChange(removeTopic(sections, section.id, topic.id))}
                       >
@@ -274,7 +281,8 @@ export function ThematicPlanEditor({
                       </IconButton>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
 
                 <tr className="bg-sunken/40 text-sm">
                   <td className={cx(TD, 'py-2 font-medium')} colSpan={leftSpan}>

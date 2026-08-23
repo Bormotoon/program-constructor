@@ -298,7 +298,9 @@ export default function App() {
       const drop =
         data.thematicPlan.length > 0 && slug !== data.frpSlug
           ? window.confirm(
-              `Тематическое планирование заполнено для предмета «${data.subject}».\n` +
+              `Тематическое планирование заполнено для ${
+                data.subject ? `предмета «${data.subject}»` : 'другого предмета'
+              }.\n` +
                 'Очистить таблицу под новый предмет?\n\n' +
                 'ОК — очистить, Отмена — оставить как есть.',
             )

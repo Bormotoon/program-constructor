@@ -217,13 +217,21 @@ export default function App() {
   }, [data, programId]);
 
   /**
-   * Текстовые разделы из самой ФРП: пояснительная записка и все три группы
-   * планируемых результатов идут дословно, как в оригинальном конструкторе.
-   * Нормативная база остаётся нашей — в ФРП её нет, это перечень приказов.
+   * Текстовые разделы из самой ФРП: пояснительная записка, содержание обучения
+   * и все три группы планируемых результатов идут дословно, как в оригинальном
+   * конструкторе. Нормативная база остаётся нашей — в ФРП её нет, это перечень
+   * приказов.
+   *
+   * Содержание обучения обязано быть здесь, вместе с остальными: раньше оно
+   * подставлялось только кнопкой «Заполнить из ФРП» и только в пустое поле,
+   * поэтому при СМЕНЕ предмета оставалось от прежнего. Учитель менял русский
+   * язык на литературу, всё остальное послушно менялось, а «Содержание
+   * обучения» так и открывало русский язык (обращение 23.08.2026).
    */
   const fillFromFrp = useCallback(
     (e: FrpCatalogEntry, p: FrpPlan, grade: string) => ({
       normativeBase: `${generateNormativeBase(e.level, e.subject)}\n\n${p.note}`,
+      subjectContent: frpClassForGrade(p, Number(grade))?.content ?? '',
       personalResults: p.personalResults,
       metaResults: p.metaResults,
       subjectResults: frpSubjectResults(p, Number(grade)),
@@ -284,11 +292,23 @@ export default function App() {
         return;
       }
       const grade = e.grades.includes(Number(data.grade)) ? data.grade : String(e.grades[0]);
+      // Таблица заполнена темами прежнего предмета — под новый она не годится
+      // совсем (у литературы в плане русский язык — не опечатка, а другой
+      // документ). Спрашиваем ровно так же, как при смене класса.
+      const drop =
+        data.thematicPlan.length > 0 && slug !== data.frpSlug
+          ? window.confirm(
+              `Тематическое планирование заполнено для предмета «${data.subject}».\n` +
+                'Очистить таблицу под новый предмет?\n\n' +
+                'ОК — очистить, Отмена — оставить как есть.',
+            )
+          : false;
       // Тексты ФРП лежат в файле плана и грузятся асинхронно; флаг говорит
       // эффекту загрузки подставить их, когда план придёт. Нормативная база
       // и перечень УМК не зависят от ФРП и заполняются сразу.
       pendingFill.current = slug;
       patch({
+        ...(drop ? { thematicPlan: [], lessonPlan: [] } : {}),
         frpSlug: slug,
         subject: e.subject,
         educationLevel: e.level,
@@ -301,7 +321,7 @@ export default function App() {
           '3. Дидактические и контрольно-измерительные материалы.',
       });
     },
-    [data.grade, patch],
+    [data.grade, data.frpSlug, data.subject, data.thematicPlan.length, patch],
   );
 
   /**
@@ -320,7 +340,9 @@ export default function App() {
       const retext: Partial<ProgramData> = {};
       if (plan) {
         const was = frpClassForGrade(plan, Number(data.grade));
-        if (was && was.content === data.subjectContent) {
+        // Пустое поле тоже наше: класс ещё не был выбран, подставлять было
+        // нечего — значит, текст нового класса встанет без спроса.
+        if (!data.subjectContent || was?.content === data.subjectContent) {
           retext.subjectContent = frpClassForGrade(plan, Number(grade))?.content ?? '';
         }
         if (frpSubjectResults(plan, Number(data.grade)) === data.subjectResults) {
@@ -361,19 +383,29 @@ export default function App() {
       goal('search_empty', { where: 'constructor', q: `${data.subject} ${data.grade} кл.` });
       return;
     }
-    if (
-      data.thematicPlan.length &&
-      !window.confirm('Заменить текущее тематическое планирование данными из федеральной программы?')
-    ) {
-      return;
-    }
     // Раздел «Содержание обучения» относится к тому же классу, поэтому
     // заполняется здесь же: отдельной кнопки для него в оригинале нет.
     const cls = frpClassForGrade(plan, Number(data.grade));
+    // Кнопка обязана делать то, что обещает, целиком: пока «Содержание
+    // обучения» заполнялось только пустым, программе с чужим текстом (после
+    // смены предмета) починиться было нечем — кнопка молча меняла одну
+    // таблицу. Перезаписываем и текст, но спрашиваем обо всём, что заменяем.
+    const replacing = [
+      data.thematicPlan.length ? 'тематическое планирование' : '',
+      cls?.content && data.subjectContent && data.subjectContent !== cls.content
+        ? 'содержание обучения'
+        : '',
+    ].filter(Boolean);
+    if (
+      replacing.length &&
+      !window.confirm(`Заменить ${replacing.join(' и ')} данными из федеральной программы?`)
+    ) {
+      return;
+    }
     patch({
       thematicPlan: sections,
       lessonPlan: [],
-      ...(cls?.content && !data.subjectContent ? { subjectContent: cls.content } : {}),
+      ...(cls?.content ? { subjectContent: cls.content } : {}),
       // Предметные результаты у части ФРП расписаны по классам, поэтому
       // обновляются вместе с планом — но только если учитель их не правил.
       ...(!data.subjectResults && frpSubjectResults(plan, Number(data.grade))
@@ -839,7 +871,7 @@ export default function App() {
             {activeTab === 'content' && (
               <TextSection
                 title="Содержание обучения"
-                hint="Заполняется из федеральной рабочей программы вместе с тематическим планированием."
+                hint="Заполняется из федеральной рабочей программы при выборе предмета и класса. Текст можно править."
                 value={data.subjectContent}
                 onChange={(v) => patch({ subjectContent: v })}
                 rows={26}

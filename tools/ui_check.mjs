@@ -321,6 +321,65 @@ for (const theme of ['light', 'dark']) {
   await context.close();
 }
 
+// --- смена предмета: тексты ФРП обязаны идти следом ---
+// Обращение 23.08.2026: учитель вёл программу по литературе, а «Содержание
+// обучения» открывало русский язык. Ломается это беззвучно — предмет, записка
+// и результаты меняются, а один раздел остаётся от прежнего предмета, — поэтому
+// проверка сравнивает текст до смены предмета и после неё.
+{
+  const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: 'ru-RU' });
+  await stubForeign(context);
+  const page = await context.newPage();
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(String(e)));
+  // Замена уже заполненного спрашивает подтверждения; по умолчанию Playwright
+  // отвечает «Отмена», и проверка мерила бы отказ, а не замену.
+  page.on('dialog', (d) => d.accept());
+  await page.goto(BASE, { waitUntil: 'networkidle' });
+  await page.evaluate(() => localStorage.clear());
+  await page.reload({ waitUntil: 'networkidle' });
+
+  const subject = page.getByLabel('Предмет', { exact: true });
+  const contentText = async () => {
+    await page.getByRole('button', { name: 'Содержание обучения' }).click();
+    return page.getByLabel('Содержание обучения', { exact: true }).inputValue();
+  };
+
+  // Путь обращения дословно: сначала программа по русскому языку, заполненная
+  // из ФРП, потом смена предмета на литературу в той же программе.
+  await subject.selectOption('russkij-yazyk-ooo');
+  await page.waitForTimeout(1200);
+  await page.getByRole('button', { name: /Заполнить из ФРП/ }).first().click();
+  await page.waitForTimeout(900);
+  const russian = await contentText();
+  note(russian.length > 500, `содержание обучения по русскому языку: ${russian.length} знаков`);
+
+  await page.getByRole('button', { name: 'Титульный лист' }).click();
+  await subject.selectOption('literatura-ooo');
+  await page.waitForTimeout(1200);
+  const literature = await contentText();
+  note(
+    literature.length > 500 && literature !== russian && /Мифология|Фольклор/.test(literature),
+    `после смены предмета содержание обучения от литературы: «${literature.slice(0, 32)}…»`,
+  );
+
+  // Второй путь к тому же: программа уже испорчена (текст от чужого предмета).
+  // Кнопка «Заполнить из ФРП» обязана заменить и его, а не только таблицу, —
+  // иначе починить сохранённую программу нечем.
+  await page.getByLabel('Содержание обучения', { exact: true }).fill(russian);
+  await page.getByRole('button', { name: 'Тематическое планирование' }).click();
+  await page.getByRole('button', { name: /Заполнить из ФРП/ }).first().click();
+  await page.waitForTimeout(900);
+  const healed = await contentText();
+  note(
+    healed === literature && healed !== russian,
+    'кнопка «Заполнить из ФРП» заменяет и содержание обучения',
+  );
+
+  note(errors.length === 0, `ошибок страницы при смене предмета: ${errors.length}`);
+  await context.close();
+}
+
 // --- библиотека программ ---
 // Главное обещание хранилища: работа не пропадает. Проверяется тем же
 // способом, каким её теряют на практике — завести вторую программу и

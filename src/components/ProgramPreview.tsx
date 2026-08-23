@@ -11,7 +11,8 @@ import { planHours, sectionHours } from '../data/thematicPlan';
  *
  * Вёрстка намеренно повторяет структуру выгружаемого DOCX (Times New Roman,
  * 14 pt, тот же порядок разделов и те же колонки таблиц), чтобы предпросмотр
- * и печать не расходились с итоговым файлом.
+ * и печать не расходились с итоговым файлом. Ноль часов здесь, как и в выгрузке,
+ * печатается пустой клеткой (utils/programOutline.ts, hoursText).
  */
 export function ProgramPreview({ data, onBack }: { data: ProgramData; onBack: () => void }) {
   const approvalText: Record<string, string> = {
@@ -145,7 +146,7 @@ export function ProgramPreview({ data, onBack }: { data: ProgramData; onBack: ()
                       <tr key={t.id}>
                         <td className={`${td} text-center`}>{t.num}</td>
                         <td className={td}>{t.name}</td>
-                        <td className={`${td} text-center`}>{t.hours}</td>
+                        <td className={`${td} text-center`}>{t.hours || ''}</td>
                         <td className={td}>{t.content}</td>
                         <td className={td}>{t.activity}</td>
                       </tr>
@@ -154,7 +155,7 @@ export function ProgramPreview({ data, onBack }: { data: ProgramData; onBack: ()
                       <td className={`${td} font-bold`} colSpan={2}>
                         Итого по разделу
                       </td>
-                      <td className={`${td} text-center font-bold`}>{sectionHours(s)}</td>
+                      <td className={`${td} text-center font-bold`}>{sectionHours(s) || ''}</td>
                       <td className={td} colSpan={2} />
                     </tr>
                   </Fragment>
@@ -163,7 +164,7 @@ export function ProgramPreview({ data, onBack }: { data: ProgramData; onBack: ()
                   <td className={`${td} font-bold`} colSpan={2}>
                     ОБЩЕЕ КОЛИЧЕСТВО ЧАСОВ ПО ПРОГРАММЕ
                   </td>
-                  <td className={`${td} text-center font-bold`}>{planHours(data.thematicPlan)}</td>
+                  <td className={`${td} text-center font-bold`}>{planHours(data.thematicPlan) || ''}</td>
                   <td className={td} colSpan={2} />
                 </tr>
               </tbody>
@@ -190,7 +191,7 @@ export function ProgramPreview({ data, onBack }: { data: ProgramData; onBack: ()
                   <tr key={l.id}>
                     <td className={`${td} text-center`}>{l.number}</td>
                     <td className={td}>{l.topic}</td>
-                    <td className={`${td} text-center`}>{l.hours}</td>
+                    <td className={`${td} text-center`}>{l.hours || ''}</td>
                     <td className={`${td} text-center`}>{l.control || ''}</td>
                     <td className={`${td} text-center`}>{l.practice || ''}</td>
                     <td className={`${td} text-center`}>{l.date}</td>
@@ -201,13 +202,13 @@ export function ProgramPreview({ data, onBack }: { data: ProgramData; onBack: ()
                     ОБЩЕЕ КОЛИЧЕСТВО ЧАСОВ ПО ПРОГРАММЕ
                   </td>
                   <td className={`${td} text-center font-bold`}>
-                    {lessonTotals(data.lessonPlan).hours}
+                    {lessonTotals(data.lessonPlan).hours || ''}
                   </td>
                   <td className={`${td} text-center font-bold`}>
-                    {lessonTotals(data.lessonPlan).control}
+                    {lessonTotals(data.lessonPlan).control || ''}
                   </td>
                   <td className={`${td} text-center font-bold`}>
-                    {lessonTotals(data.lessonPlan).practice}
+                    {lessonTotals(data.lessonPlan).practice || ''}
                   </td>
                   <td className={td} />
                 </tr>

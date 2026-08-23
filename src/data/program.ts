@@ -1,4 +1,4 @@
-import type { PlanSection } from './thematicPlan';
+import { newId, type PlanSection } from './thematicPlan';
 import type { FrpLevel } from './frp/catalog';
 
 /**
@@ -113,6 +113,66 @@ export const defaultProgram: ProgramData = {
   thematicPlan: [],
   lessonPlan: [],
 };
+
+/** Строк в пустом бланке, когда норму часов взять неоткуда: предмет не выбран. */
+export const BLANK_ROWS = 20;
+
+/**
+ * Пустой бланк программы: шапка и разлинованные таблицы, всё остальное снято.
+ *
+ * Учителю, который заполняет программу от руки или дописывает её в Word,
+ * нужен не текст ФРП, а форма — титульный лист с уже введёнными реквизитами
+ * и таблицы с шапкой и пустыми строками.
+ *
+ * Бланк — это те же данные программы, поэтому он идёт через обычную выгрузку
+ * (utils/programOutline.ts) и получается во всех форматах сразу, без единой
+ * ветки «а если бланк» в сборщиках DOCX, ODT и PDF: разделы без текста в
+ * документ не попадают, а строки без часов печатаются пустыми ячейками.
+ *
+ * @param lessons строк в поурочном плане — норма часов ФРП, если она известна.
+ */
+export function blankTemplate(
+  data: ProgramData,
+  lessons: number = BLANK_ROWS,
+  topics: number = BLANK_ROWS,
+): ProgramData {
+  return {
+    ...data,
+    normativeBase: '',
+    subjectContent: '',
+    personalResults: '',
+    metaResults: '',
+    subjectResults: '',
+    methodologicalSupport: '',
+    // Один безымянный раздел: строку с названием раздела бланк не печатает,
+    // разметку разделов учитель проставит сам.
+    thematicPlan: [
+      {
+        id: newId('s'),
+        name: '',
+        topics: Array.from({ length: topics }, () => ({
+          id: newId('t'),
+          num: '',
+          name: '',
+          hours: 0,
+          content: '',
+          activity: '',
+        })),
+      },
+    ],
+    // Номера уроков проставлены заранее: их всё равно писать подряд, а по
+    // норме часов их ровно столько, сколько уроков в году.
+    lessonPlan: Array.from({ length: lessons }, (_, i) => ({
+      id: newId('l'),
+      number: i + 1,
+      topic: '',
+      hours: 0,
+      control: 0,
+      practice: 0,
+      date: '',
+    })),
+  };
+}
 
 export const STORAGE_KEY = 'fgos-program-data-v3';
 

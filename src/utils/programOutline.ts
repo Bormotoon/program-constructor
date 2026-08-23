@@ -65,6 +65,16 @@ const APPROVAL_TEXT = (data: ProgramData): Record<string, string> => ({
   approved: data.approvedBy,
 });
 
+/**
+ * Часы в ячейке таблицы.
+ *
+ * Ноль печатается пустой клеткой: нулевых часов у темы не бывает — так
+ * выглядят строки пустого бланка (data/program.ts, blankTemplate), которые
+ * учитель заполняет сам. Печатать в них «0» значило бы заранее что-то
+ * утверждать за него.
+ */
+const hoursText = (hours: number): string => (hours ? String(hours) : '');
+
 /** Строка «Итого»/«ОБЩЕЕ КОЛИЧЕСТВО» — подпись слева на две колонки, число, пустой хвост. */
 function totalRow(label: string, value: string, tail: number): OutlineCell[] {
   return [
@@ -85,15 +95,15 @@ function thematicTable(data: ProgramData): OutlineTable {
       rows.push([
         { text: t.num, align: 'center' },
         { text: t.name },
-        { text: String(t.hours), align: 'center' },
+        { text: hoursText(t.hours), align: 'center' },
         { text: t.content },
         { text: t.activity },
       ]);
     }
-    rows.push(totalRow('Итого по разделу', String(sectionHours(s)), 2));
+    rows.push(totalRow('Итого по разделу', hoursText(sectionHours(s)), 2));
   }
 
-  rows.push(totalRow('ОБЩЕЕ КОЛИЧЕСТВО ЧАСОВ ПО ПРОГРАММЕ', String(planHours(data.thematicPlan)), 2));
+  rows.push(totalRow('ОБЩЕЕ КОЛИЧЕСТВО ЧАСОВ ПО ПРОГРАММЕ', hoursText(planHours(data.thematicPlan)), 2));
 
   return {
     id: 'thematic',
@@ -113,9 +123,9 @@ function lessonTable(data: ProgramData): OutlineTable {
   const rows: OutlineCell[][] = data.lessonPlan.map((l) => [
     { text: String(l.number), align: 'center' },
     { text: l.topic },
-    { text: String(l.hours), align: 'center' },
-    { text: l.control ? String(l.control) : '', align: 'center' },
-    { text: l.practice ? String(l.practice) : '', align: 'center' },
+    { text: hoursText(l.hours), align: 'center' },
+    { text: hoursText(l.control), align: 'center' },
+    { text: hoursText(l.practice), align: 'center' },
     { text: l.date, align: 'center' },
   ]);
 
@@ -124,9 +134,9 @@ function lessonTable(data: ProgramData): OutlineTable {
 
   rows.push([
     { text: 'ОБЩЕЕ КОЛИЧЕСТВО ЧАСОВ ПО ПРОГРАММЕ', bold: true, span: 2 },
-    { text: String(sum((l) => l.hours)), bold: true, align: 'center' },
-    { text: String(sum((l) => l.control)), bold: true, align: 'center' },
-    { text: String(sum((l) => l.practice)), bold: true, align: 'center' },
+    { text: hoursText(sum((l) => l.hours)), bold: true, align: 'center' },
+    { text: hoursText(sum((l) => l.control)), bold: true, align: 'center' },
+    { text: hoursText(sum((l) => l.practice)), bold: true, align: 'center' },
     { text: '' },
   ]);
 
@@ -176,8 +186,13 @@ export function buildOutline(data: ProgramData): OutlineBlock[] {
   out.push({ kind: 'pagebreak' });
 
   // ===== Пояснительная записка =====
-  out.push({ kind: 'heading', text: 'ПОЯСНИТЕЛЬНАЯ ЗАПИСКА' });
-  if (data.normativeBase) out.push({ kind: 'body', text: data.normativeBase });
+  // Заголовок идёт только вместе с текстом. Пустой раздел — это лишняя
+  // страница с одним заголовком посреди документа; в пустом бланке
+  // (blankTemplate) таких страниц было бы две подряд.
+  if (data.normativeBase) {
+    out.push({ kind: 'heading', text: 'ПОЯСНИТЕЛЬНАЯ ЗАПИСКА' });
+    out.push({ kind: 'body', text: data.normativeBase });
+  }
 
   // ===== Содержание обучения =====
   if (data.subjectContent) {
@@ -186,31 +201,33 @@ export function buildOutline(data: ProgramData): OutlineBlock[] {
   }
 
   // ===== Планируемые результаты =====
-  out.push({ kind: 'heading', text: 'ПЛАНИРУЕМЫЕ РЕЗУЛЬТАТЫ ОСВОЕНИЯ ПРОГРАММЫ' });
-  if (data.personalResults) {
-    out.push({ kind: 'subheading', text: 'ЛИЧНОСТНЫЕ РЕЗУЛЬТАТЫ' });
-    out.push({ kind: 'body', text: data.personalResults });
-  }
-  if (data.metaResults) {
-    out.push({ kind: 'subheading', text: 'МЕТАПРЕДМЕТНЫЕ РЕЗУЛЬТАТЫ' });
-    out.push({ kind: 'body', text: data.metaResults });
-  }
-  if (data.subjectResults) {
-    out.push({ kind: 'subheading', text: 'ПРЕДМЕТНЫЕ РЕЗУЛЬТАТЫ' });
-    out.push({ kind: 'body', text: data.subjectResults });
+  if (data.personalResults || data.metaResults || data.subjectResults) {
+    out.push({ kind: 'heading', text: 'ПЛАНИРУЕМЫЕ РЕЗУЛЬТАТЫ ОСВОЕНИЯ ПРОГРАММЫ' });
+    if (data.personalResults) {
+      out.push({ kind: 'subheading', text: 'ЛИЧНОСТНЫЕ РЕЗУЛЬТАТЫ' });
+      out.push({ kind: 'body', text: data.personalResults });
+    }
+    if (data.metaResults) {
+      out.push({ kind: 'subheading', text: 'МЕТАПРЕДМЕТНЫЕ РЕЗУЛЬТАТЫ' });
+      out.push({ kind: 'body', text: data.metaResults });
+    }
+    if (data.subjectResults) {
+      out.push({ kind: 'subheading', text: 'ПРЕДМЕТНЫЕ РЕЗУЛЬТАТЫ' });
+      out.push({ kind: 'body', text: data.subjectResults });
+    }
   }
 
   // ===== Тематическое планирование =====
   if (data.thematicPlan.length) {
     out.push({ kind: 'heading', text: 'ТЕМАТИЧЕСКОЕ ПЛАНИРОВАНИЕ' });
-    out.push({ kind: 'subheading', text: `${data.grade} КЛАСС` });
+    if (data.grade) out.push({ kind: 'subheading', text: `${data.grade} КЛАСС` });
     out.push({ kind: 'table', table: thematicTable(data) });
   }
 
   // ===== Поурочное планирование =====
   if (data.lessonPlan.length) {
     out.push({ kind: 'heading', text: 'ПОУРОЧНОЕ ПЛАНИРОВАНИЕ' });
-    out.push({ kind: 'subheading', text: `${data.grade} КЛАСС` });
+    if (data.grade) out.push({ kind: 'subheading', text: `${data.grade} КЛАСС` });
     out.push({ kind: 'table', table: lessonTable(data) });
   }
 

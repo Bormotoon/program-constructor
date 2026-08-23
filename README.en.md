@@ -77,7 +77,10 @@ Everything essential to the original is implemented:
   the original);
 - optional table columns can be hidden;
 - rows can be reordered, duplicated, added and removed;
-- preview, print and export in the 2025 curriculum format.
+- preview, print and export in the 2025 curriculum format;
+- **a blank program form** — the title page plus ruled, empty tables, for
+  teachers who fill the document in by hand or finish it in Word
+  ([details](#blank-form)).
 
 Export comes in five formats, all assembled in the browser — no server needed:
 
@@ -93,6 +96,25 @@ All five derive their sections, ordering and column widths from a single model
 (`src/utils/programOutline.ts`), so the formats cannot drift apart: a new section
 appears in all of them at once, and `npm run verify:export` asserts that every
 heading reached every format.
+
+## Blank form
+
+Not every program is assembled in the app: some are filled in by hand, finished
+in Word, or handed in on paper. The "Title page" tab therefore offers
+**"Скачать пустой бланк DOCX"** — a document with nothing but the header and
+tables ruled to the 2025 curriculum format:
+
+- the title page with every detail entered above (school, founding authority,
+  subject, grade, author, approval block); anything left empty stays a blank line;
+- **thematic planning** — 20 empty rows under the five-column header, with the
+  per-section subtotal and the grand total row;
+- **lesson-by-lesson planning** — as many rows as the curriculum prescribes hours
+  for the selected grade (34, 68, 102 …), with lesson numbers already filled in.
+  With no subject selected, both tables get 20 rows.
+
+The form carries no curriculum text and no headings of empty sections, and hour
+cells are left blank rather than zeroed: a form is a place to write, not a
+pre-filled answer.
 
 <details>
 <summary>More screenshots</summary>

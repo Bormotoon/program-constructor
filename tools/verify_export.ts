@@ -11,7 +11,7 @@
  * у всех берётся из общей модели (src/utils/programOutline.ts), и проверка
  * следит, чтобы это оставалось правдой.
  *
- * Запуск: npm run verify:docx
+ * Запуск: npm run verify:export
  */
 
 import { readFileSync, readdirSync } from 'node:fs';
@@ -25,7 +25,7 @@ import { programToMarkdown, programToText } from '../src/utils/textExport';
 import { buildOutline, exportBaseName } from '../src/utils/programOutline';
 import { buildPlanForGrade, planHours } from '../src/data/thematicPlan';
 import { frpLessonVariants, generateLessonPlan, lessonsFromFrp, lessonTotals } from '../src/data/lessonPlan';
-import { defaultProgram } from '../src/data/program';
+import { BLANK_ROWS, blankTemplate, defaultProgram } from '../src/data/program';
 
 const DIR = 'src/data/frp';
 const MIME = 'application/vnd.oasis.opendocument.text';
@@ -181,6 +181,53 @@ check('DOCX: сумма часов по программе', documentXml.include
 check('ODT: сумма часов по программе', odtContent.includes(`>${planTotal}<`));
 check('TXT: сумма часов по программе', txt.includes(String(planTotal)));
 check('MD: сумма часов по программе', md.includes(String(planTotal)));
+
+// ===== пустой бланк =====
+// Бланк собирается той же выгрузкой, поэтому проверяется то, чем он от
+// программы отличается: в нём есть шапка и обе разлинованные таблицы и нет
+// ни одного текстового раздела. Разъедься это — учитель получит бланк с
+// вклеенным текстом ФРП, ради отсутствия которого бланк и берут.
+const blankHours = 34;
+const blank = blankTemplate(data, blankHours);
+const blankOutline = buildOutline(blank);
+const blankHeadings = blankOutline
+  .filter((b) => b.kind === 'heading')
+  .map((b) => (b as { text: string }).text);
+
+check(
+  'Бланк: только разделы планирования',
+  blankHeadings.join('|') === 'ТЕМАТИЧЕСКОЕ ПЛАНИРОВАНИЕ|ПОУРОЧНОЕ ПЛАНИРОВАНИЕ',
+  blankHeadings.join(', ') || 'разделов нет',
+);
+check(
+  'Бланк: шапка на месте',
+  blankOutline.some((b) => b.kind === 'cover' && b.text === 'РАБОЧАЯ ПРОГРАММА'),
+);
+
+const blankTables = blankOutline.filter((b) => b.kind === 'table').map((b) => (b as { table: { id: string; head: string[]; rows: { text: string }[][] } }).table);
+const blankThematic = blankTables.find((t) => t.id === 'thematic');
+const blankLessons = blankTables.find((t) => t.id === 'lessons');
+
+// Строк в бланке: тематическое — постоянная разлиновка, поурочное — по норме
+// часов, и «Итого по разделу» с общей суммой добавляются сверху.
+check('Бланк: строк тематического', blankThematic?.rows.length === BLANK_ROWS + 2, `${blankThematic?.rows.length}`);
+check('Бланк: строк поурочного', blankLessons?.rows.length === blankHours + 1, `${blankLessons?.rows.length}`);
+check('Бланк: шапка таблицы размечена', blankThematic?.head.length === 5 && blankLessons?.head.length === 6);
+check(
+  'Бланк: номера уроков проставлены',
+  blankLessons?.rows[0][0].text === '1' && blankLessons?.rows[blankHours - 1][0].text === String(blankHours),
+);
+// Пустые клетки, а не нули: ноль в графе часов — это уже утверждение.
+check(
+  'Бланк: ячейки часов пустые',
+  blankThematic?.rows.every((r) => r.every((c) => c.text !== '0')) === true &&
+    blankLessons?.rows.every((r) => r.every((c) => c.text !== '0')) === true,
+);
+
+const blankDocx = await Packer.toBuffer(buildDocument(blank));
+const blankXml = readZipEntry(blankDocx, 'word/document.xml') ?? '';
+check('Бланк: DOCX собирается', blankDocx.length > 5_000, `${(blankDocx.length / 1024).toFixed(0)} КБ`);
+check('Бланк: без текста ФРП', !blankXml.includes('ПОЯСНИТЕЛЬНАЯ ЗАПИСКА') && !blankXml.includes(plan.note.slice(0, 40)));
 
 console.log(`\nпредмет: ${plan.subject} (${plan.level}), ${grade} класс`);
 console.log(`разделов: ${sections.length}, тем: ${sections.reduce((a, s) => a + s.topics.length, 0)}`);

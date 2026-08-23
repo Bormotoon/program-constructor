@@ -1,9 +1,9 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { saveAs } from 'file-saver';
-import { ChevronDown, Download, File, FileCode2, FileText, FileType2, Loader2, Mail } from 'lucide-react';
+import { ChevronDown, Download, File, FileCode2, FileText, FileType2, Loader2, Mail, Table2 } from 'lucide-react';
 import { Button, cx } from './ui';
 import { SupportDialog, shouldAskForSupport } from './SupportDialog';
-import type { ProgramData } from '../data/program';
+import { blankTemplate, type ProgramData } from '../data/program';
 import type { ExportFile } from '../utils/programOutline';
 import { recoverFromStaleBuild } from '../utils/staleBuild';
 import { mailAvailable, mailFile } from '../utils/mailFile';
@@ -225,6 +225,60 @@ export function ExportMenu({ data, size = 'md' }: { data: ProgramData; size?: 's
       )}
 
       {support && <SupportDialog onClose={() => setSupport(false)} />}
+    </div>
+  );
+}
+
+/**
+ * Выгрузка пустого бланка: шапка и разлинованные таблицы, без текста ФРП.
+ *
+ * Стоит на титульном листе, рядом с полями, которые в бланк и попадают, —
+ * а не пунктом в меню форматов: бланк берут вместо программы, а не наравне
+ * с ней, и путать эти два выхода нельзя.
+ *
+ * Формат один, DOCX: бланк нужен, чтобы дописать его в Word или распечатать,
+ * и разворачивать ради этого меню из пяти форматов незачем. Сам документ
+ * собирается обычной выгрузкой — бланк отличается только данными
+ * (data/program.ts, blankTemplate).
+ */
+export function BlankTemplateButton({ data, lessons }: { data: ProgramData; lessons: number }) {
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  const download = async () => {
+    setFailed(false);
+    setBusy(true);
+    try {
+      const m = await import('../utils/docxExport');
+      const file = await m.docxFile(blankTemplate(data, lessons));
+      // Имя отличается от имени программы: иначе в «Загрузках» бланк и
+      // готовая программа лягут рядом под одним названием.
+      saveAs(file.blob, `blank_${file.name}`);
+      goal('constructor_blank_downloaded');
+    } catch (e) {
+      if (recoverFromStaleBuild(e)) return;
+      console.error('Не удалось собрать пустой бланк:', e);
+      setFailed(true);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div>
+      <Button disabled={busy} onClick={() => void download()}>
+        {busy ? (
+          <Loader2 size={15} className="animate-spin motion-reduce:animate-none" />
+        ) : (
+          <Table2 size={15} />
+        )}
+        Скачать пустой бланк DOCX
+      </Button>
+      {failed && (
+        <p role="alert" className="mt-2 rounded-lg border border-danger/30 bg-danger-soft px-3 py-2 text-xs text-danger">
+          Не удалось собрать бланк. Подробности — в консоли браузера.
+        </p>
+      )}
     </div>
   );
 }

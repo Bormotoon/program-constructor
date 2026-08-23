@@ -107,6 +107,26 @@ for (const theme of ['light', 'dark']) {
 
   await page.screenshot({ path: `${OUT}/01-title-${theme}.png`, fullPage: false });
 
+  // --- пустой бланк ---
+  // Проверяется здесь, на титульном листе и до заполнения таблиц: бланк тем
+  // и отличается от программы, что берут его с пустыми разделами. Файл идёт
+  // тем же ленивым чанком docx, и сломанный импорт виден только в браузере.
+  if (theme === 'light') {
+    await page.getByRole('button', { name: /Скачать пустой бланк/ }).click();
+    const blank = await page.waitForEvent('download', { timeout: 30_000 }).catch(() => null);
+    if (!blank) {
+      note(false, 'пустой бланк: файл не пришёл');
+    } else {
+      const file = `${OUT}/blank-template.docx`;
+      await blank.saveAs(file);
+      const size = statSync(file).size;
+      note(
+        /^blank_.+\.docx$/.test(blank.suggestedFilename()) && size > 5000,
+        `пустой бланк: ${blank.suggestedFilename().slice(-28)}, ${(size / 1024).toFixed(0)} КБ`,
+      );
+    }
+  }
+
   // --- тексты из ФРП ---
   // Они подставляются после асинхронной загрузки плана, поэтому ломаются
   // незаметно: интерфейс выглядит рабочим, а разделы остаются пустыми.

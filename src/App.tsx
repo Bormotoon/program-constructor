@@ -23,7 +23,7 @@ import {
 import { AdUnit } from './components/AdUnit';
 import UmkFromCatalog from './components/UmkFromCatalog';
 import { SchoolCombobox } from './components/SchoolCombobox';
-import { ExportMenu } from './components/ExportMenu';
+import { BlankTemplateButton, ExportMenu } from './components/ExportMenu';
 import { LibraryDialog } from './components/LibraryDialog';
 
 // Диалог импорта тянет за собой парсер xlsx (~400 КБ) — грузим по открытию.
@@ -59,6 +59,7 @@ import {
 import {
   APPROVAL_LABELS,
   APPROVAL_PRESETS,
+  BLANK_ROWS,
   defaultProgram,
   type ApprovalKind,
   type ProgramData,
@@ -817,6 +818,7 @@ export default function App() {
               <TitleTab
                 data={data}
                 entry={entry}
+                expectedHours={expectedHours}
                 levelSubjects={levelSubjects}
                 patch={patch}
                 chooseSubject={chooseSubject}
@@ -1104,6 +1106,7 @@ const SUBJECT_ABBR: Record<string, string> = {
 function TitleTab({
   data,
   entry,
+  expectedHours,
   levelSubjects,
   patch,
   chooseSubject,
@@ -1111,6 +1114,8 @@ function TitleTab({
 }: {
   data: ProgramData;
   entry: FrpCatalogEntry | undefined;
+  /** Норма часов выбранного класса; по ней размечается поурочный бланк. */
+  expectedHours: number | null;
   levelSubjects: FrpCatalogEntry[];
   patch: (p: Partial<ProgramData>) => void;
   chooseSubject: (slug: string) => void;
@@ -1336,6 +1341,25 @@ function TitleTab({
           ))}
         </div>
       </fieldset>
+
+      {/*
+        Пустой бланк — выход для тех, кто программу собирает не здесь: шапка
+        со всеми реквизитами выше плюс разлинованные таблицы без единой
+        строчки текста. Стоит на титульном листе, потому что кормится ровно
+        этими полями, и виден без раскрытия меню: спрятанный выход для
+        посетителя не существует (та же история, что с передачей учебников
+        в УМК, о которой пришло обращение «не могу найти»).
+      */}
+      <div className="rounded-xl border border-line bg-sunken p-4">
+        <p className="text-sm font-medium">Пустой бланк программы</p>
+        <p className="mt-1 mb-3 text-xs text-ink-muted">
+          Титульный лист с реквизитами выше и разлинованные таблицы тематического и
+          поурочного планирования без текста — заполнить от руки или дописать в Word.
+          Строк: тематическое — {BLANK_ROWS}, поурочное — {expectedHours ?? BLANK_ROWS}
+          {expectedHours ? ' (по норме часов ФРП, номера уроков проставлены)' : ''}.
+        </p>
+        <BlankTemplateButton data={data} lessons={expectedHours ?? BLANK_ROWS} />
+      </div>
     </div>
   );
 }

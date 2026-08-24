@@ -1,5 +1,6 @@
-import { memo, useCallback, useMemo, useRef } from 'react';
+import { memo, useCallback, useMemo, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, CalendarDays, Copy, Plus, RefreshCw, Trash2, TriangleAlert } from 'lucide-react';
+import { LessonDatesDialog } from './LessonDatesDialog';
 import {
   addLesson,
   duplicateLesson,
@@ -50,6 +51,18 @@ export function LessonPlanEditor({
   const fromFrp = frpVariants.length > 0;
   const issues = useMemo(() => validateLessonPlan(rows, sections), [rows, sections]);
   const totals = lessonTotals(rows);
+  const [datesOpen, setDatesOpen] = useState(false);
+
+  /*
+   * Сколько учебных ДНЕЙ занимает план. Обычно это ровно число строк: и ФРП,
+   * и разворот из тематического дают по строке на урок с hours = 1. Но строку
+   * можно добавить руками и поставить ей два часа — тогда она занимает два
+   * учебных дня, и без этого счёта последние даты уехали бы влево.
+   */
+  const slotCount = useMemo(
+    () => rows.reduce((a, r) => a + Math.max(1, Math.floor(Number(r.hours) || 1)), 0),
+    [rows],
+  );
 
   // Обработчики читают строки через ref и потому не пересоздаются при каждом
   // изменении. Иначе поурочный план на две сотни строк перерисовывался бы
@@ -64,6 +77,26 @@ export function LessonPlanEditor({
       copy: (id) => onChange(duplicateLesson(rowsRef.current, id)),
       remove: (id) => onChange(removeLesson(rowsRef.current, id)),
     }),
+    [onChange],
+  );
+
+  /**
+   * Раскладывает готовые даты по строкам. Строке с несколькими часами
+   * достаётся дата ПЕРВОГО её урока, а следующие даты сдвигаются на её
+   * продолжительность — иначе план поехал бы.
+   */
+  const applyDates = useCallback(
+    (dates: string[]) => {
+      let i = 0;
+      onChange(
+        rowsRef.current.map((r) => {
+          const span = Math.max(1, Math.floor(Number(r.hours) || 1));
+          const date = dates[i] ?? '';
+          i += span;
+          return { ...r, date };
+        }),
+      );
+    },
     [onChange],
   );
 
@@ -127,6 +160,9 @@ export function LessonPlanEditor({
           <RefreshCw size={15} />
           {fromFrp ? 'Перезаполнить из ФРП' : 'Пересобрать из тематического'}
         </Button>
+        <Button size="sm" onClick={() => setDatesOpen(true)}>
+          <CalendarDays size={15} /> Проставить даты
+        </Button>
         {fromFrp && (
           <span className="text-xs text-ink-subtle">темы уроков взяты из ФРП</span>
         )}
@@ -134,6 +170,13 @@ export function LessonPlanEditor({
           уроков: {rows.length} · часов: {totals.hours}
         </span>
       </div>
+
+      <LessonDatesDialog
+        isOpen={datesOpen}
+        onClose={() => setDatesOpen(false)}
+        lessonCount={slotCount}
+        onApply={applyDates}
+      />
 
       {issues.length > 0 && (
         <div role="status" aria-live="polite" className="space-y-2">

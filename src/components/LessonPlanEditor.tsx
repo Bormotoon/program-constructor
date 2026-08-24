@@ -1,6 +1,7 @@
 import { memo, useCallback, useMemo, useRef, useState } from 'react';
-import { ArrowDown, ArrowUp, CalendarDays, Copy, Plus, RefreshCw, Trash2, TriangleAlert } from 'lucide-react';
+import { ArrowDown, ArrowUp, CalendarDays, Copy, LayoutTemplate, Plus, RefreshCw, Trash2, TriangleAlert } from 'lucide-react';
 import { LessonDatesDialog } from './LessonDatesDialog';
+import { techCardUrl } from '../utils/techCardHandoff';
 import {
   addLesson,
   duplicateLesson,
@@ -19,6 +20,9 @@ interface Props {
   sections: PlanSection[];
   onChange: (rows: LessonRow[]) => void;
   onRegenerate: (variant?: number) => void;
+  /** Ключ каталога ФРП и класс — для перехода в технологическую карту. */
+  frpSlug?: string;
+  grade?: string;
   /**
    * Названия вариантов поурочного планирования из ФРП. Пустой массив —
    * готового плана нет, он разворачивается из тематического.
@@ -47,6 +51,8 @@ export function LessonPlanEditor({
   onChange,
   onRegenerate,
   frpVariants = [],
+  frpSlug = '',
+  grade = '',
 }: Props) {
   const fromFrp = frpVariants.length > 0;
   const issues = useMemo(() => validateLessonPlan(rows, sections), [rows, sections]);
@@ -214,6 +220,8 @@ export function LessonPlanEditor({
                 first={i === 0}
                 last={i === rows.length - 1}
                 handlers={handlers}
+                frpSlug={frpSlug}
+                grade={grade}
               />
             ))}
             <tr className="bg-sunken text-sm font-semibold">
@@ -241,11 +249,15 @@ const LessonRowView = memo(function LessonRowView({
   first,
   last,
   handlers,
+  frpSlug,
+  grade,
 }: {
   row: LessonRow;
   first: boolean;
   last: boolean;
   handlers: RowHandlers;
+  frpSlug: string;
+  grade: string;
 }) {
   // Часы на контрольные и практические не могут превышать часы урока —
   // то же ограничение подсвечивает оригинальный конструктор.
@@ -300,6 +312,21 @@ const LessonRowView = memo(function LessonRowView({
         />
       </td>
       <td className={cx(TD, 'whitespace-nowrap text-center')}>
+        {/*
+          Технологическая карта — про содержание конкретного урока, поэтому
+          переход стоит в его строке, а не в общей панели. Открывается новой
+          вкладкой: конструктор с несохранённой программой закрывать нельзя.
+        */}
+        <a
+          className="inline-flex h-7 w-7 items-center justify-center rounded text-ink-muted transition-colors duration-150 hover:bg-sunken hover:text-brand"
+          href={techCardUrl({ frpSlug, grade, topic: row.topic, number: row.number })}
+          target="_blank"
+          rel="noopener"
+          title={`Технологическая карта к уроку ${row.number}`}
+          aria-label={`Технологическая карта к уроку ${row.number}`}
+        >
+          <LayoutTemplate size={14} />
+        </a>
         <IconButton
           label="Переместить выше"
           disabled={first}

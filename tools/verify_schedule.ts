@@ -12,9 +12,10 @@
  * Запуск: npm run verify:schedule (после npm run build:schedule)
  */
 
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { inflateRawSync } from 'node:zlib';
+import { readFileSync } from 'node:fs';
 import { Packer } from 'docx';
+
+import { checkBuild, docXml } from './verify_build';
 
 import {
   buildScheduleDocument,
@@ -31,30 +32,6 @@ let failed = 0;
 function check(name: string, ok: boolean, detail = ''): void {
   console.log((ok ? '  ok   ' : '  ОШИБКА ') + name + (detail ? '  ' + detail : ''));
   if (!ok) failed += 1;
-}
-
-/** Достаёт word/document.xml из готового DOCX без внешних зависимостей. */
-function docXml(buf: Buffer): string {
-  const target = 'word/document.xml';
-  let offset = 0;
-  while (offset < buf.length - 4) {
-    if (buf.readUInt32LE(offset) !== 0x04034b50) {
-      offset += 1;
-      continue;
-    }
-    const method = buf.readUInt16LE(offset + 8);
-    const compressed = buf.readUInt32LE(offset + 18);
-    const nameLen = buf.readUInt16LE(offset + 26);
-    const extraLen = buf.readUInt16LE(offset + 28);
-    const name = buf.subarray(offset + 30, offset + 30 + nameLen).toString('utf8');
-    const dataStart = offset + 30 + nameLen + extraLen;
-    if (name === target) {
-      const data = buf.subarray(dataStart, dataStart + compressed);
-      return (method === 8 ? inflateRawSync(data) : data).toString('utf8');
-    }
-    offset = dataStart + compressed;
-  }
-  return '';
 }
 
 const data = { ...defaultSchedule(), schoolName: 'МБОУ «Средняя школа № 1»', locality: 'г. Красноярск' };
@@ -117,87 +94,21 @@ const { common } = schedulePeriods(data);
 check('все четверти попали в текст', common.every((q) => text.includes(q.label)));
 
 console.log('\n3) собранное приложение');
-const dir = 'dist-schedule';
-if (!existsSync(dir)) {
-  check('сборка есть (npm run build:schedule)', false);
-} else {
-  const html = readFileSync(`${dir}/index.html`, 'utf8');
-  const assets = readdirSync(`${dir}/assets`);
-  const css = assets.filter((f) => f.endsWith('.css'));
-  const js = assets.filter((f) => f.endsWith('.js'));
-  check('в сборке есть CSS и JS', css.length > 0 && js.length > 0);
-
-  const cssText = css.map((f) => readFileSync(`${dir}/assets/${f}`, 'utf8')).join('');
-  check('CSS не пустой', cssText.length > 15000, `${Math.round(cssText.length / 1024)} КБ`);
-  for (const cls of ['bg-canvas', 'border-line', 'text-ink', 'bg-brand-soft', 'grid-cols']) {
-    check(`класс ${cls} сгенерирован`, cssText.includes(cls));
-  }
-
-  // Тот же инвариант, что сломался у конструктора на выкате 06.08.2026: всё,
-  // что оглавление и главный чанк грузят, обязано лежать в assets/.
-  const mainJs = html.match(/assets\/main-[A-Za-z0-9_-]+\.js/)?.[0] ?? '';
-  check('index.html ссылается на существующий main-*.js', mainJs !== '' && existsSync(`${dir}/${mainJs}`), mainJs);
-  if (mainJs) {
-    const chunks = [...readFileSync(`${dir}/${mainJs}`, 'utf8').matchAll(/[A-Za-z0-9_.-]+-[A-Za-z0-9_-]{8}\.js/g)]
-      .map((m) => m[0]);
-    const missing = [...new Set(chunks)].filter((c) => !existsSync(`${dir}/assets/${c}`));
-    check('все ленивые чанки на месте', missing.length === 0, missing.join(', '));
-  }
-  /*
-   * .htaccess и favicon обязаны попасть в сборку. Их отсутствие не ломает
-   * ничего сразу: приложение открывается и работает. Ломается ПОСЛЕ
-   * СЛЕДУЮЩЕГО выката — хостинг отдаёт index.html с max-age 30 дней, браузер
-   * месяц просит чанки, которых больше нет, и любая ленивая загрузка падает
-   * (так и вышло 28.07.2026). Ловить это надо здесь, а не на проде.
-   */
-  check('в сборке есть .htaccess', existsSync(`${dir}/.htaccess`));
-  if (existsSync(`${dir}/.htaccess`)) {
-    const ht = readFileSync(`${dir}/.htaccess`, 'utf8');
-    check('index.html помечен no-cache', ht.includes('no-cache'));
-    check('хешированные ассеты кэшируются надолго', ht.includes('immutable'));
-  }
-  const icon = html.match(/href="\.?\/?(favicon\.svg)"/)?.[1];
-  check('favicon из разметки лежит в сборке', !icon || existsSync(`${dir}/${icon}`), icon ?? '—');
-
-  check('канонический адрес указывает на /uchebnyy-grafik/', html.includes('/uchebnyy-grafik/'));
-  check('страница не запрещена к индексации', !/noindex/.test(html));
-
-  /*
-   * Чужие ЗАГРУЗКИ, а не любое упоминание домена: в CSS всегда есть баннер
-   * лицензии Tailwind, а в JS — тексты предупреждений со ссылками на
-   * документацию. Проверять надо ровно то, на чём уже горели: у интерактивной
-   * доски шрифты уходили на esm.sh при каждой сборке. Значит смотрим url() и
-   * @import в CSS и src/href в разметке.
-   */
-  const loads = [
-    ...[...cssText.matchAll(/url\(\s*['"]?([^'")]+)/g)].map((m) => m[1]),
-    ...[...cssText.matchAll(/@import\s+['"]([^'"]+)/g)].map((m) => m[1]),
-    ...[...html.matchAll(/(?:src|href)="([^"]+)"/g)].map((m) => m[1]),
-  ];
-  // Свой домен не в счёт: canonical и og:url обязаны быть абсолютными.
-  const external = loads.filter(
-    (u) => /^(https?:)?\/\//.test(u) && !u.includes('xn--80abidn3bem'),
-  );
-  check(
-    'ни один шрифт, скрипт или стиль не грузится с чужого хоста',
-    external.length === 0,
-    external.join(', '),
-  );
-  check('загрузок в сборке найдено', loads.length > 0, `${loads.length}`);
-
-  /*
-   * Метрика — единственный сторонний хост, к которому приложению разрешено
-   * обращаться, и её скрипт вставляется из JS, а не атрибутом src, поэтому
-   * проверка выше его не видит. Значит проверяем отдельно: счётчик на месте,
-   * и кроме него в разметке нет НИ ОДНОГО чужого домена.
-   */
-  check('счётчик Метрики в разметке', html.includes('108745963'));
-  check('цели инструментов в разметке', html.includes('tool_started'));
-  const hosts = [...new Set([...html.matchAll(/https?:\/\/([a-zA-Z0-9._-]+)/g)].map((m) => m[1]))]
-    .filter((h) => h !== 'mc.yandex.ru' && !h.includes('xn--80abidn3bem'));
-  check('кроме Метрики чужих доменов в разметке нет', hosts.length === 0, hosts.join(', '));
-  check('рекламы пока нет (блоки РСЯ ещё не созданы)', !html.includes('ap-loader'));
-}
+checkBuild(
+  {
+    dir: 'dist-schedule',
+    classes: ['bg-canvas', 'border-line', 'text-ink', 'bg-brand-soft', 'grid-cols'],
+    canonical: 'https://xn--80abidn3bem.xn--p1ai/apps/uchebnyy-grafik/',
+    noindex: true,
+  },
+  check,
+);
+check(
+  'og:url ведёт на лендинг, а не на оболочку',
+  readFileSync('dist-schedule/index.html', 'utf8').includes(
+    'og:url" content="https://xn--80abidn3bem.xn--p1ai/uchebnyy-grafik/"',
+  ),
+);
 
 console.log(failed ? `\nПРОВАЛОВ: ${failed}` : '\nВсе проверки пройдены.');
 process.exit(failed ? 1 : 0);

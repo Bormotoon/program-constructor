@@ -1010,6 +1010,8 @@ export default function App() {
                   onChange={setLessonPlan}
                   onRegenerate={buildLessons}
                   frpVariants={lessonVariants.map((v) => v.name)}
+                  frpSlug={data.frpSlug}
+                  grade={data.grade}
                 />
               </div>
             )}

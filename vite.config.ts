@@ -19,6 +19,7 @@ import {defineConfig} from 'vite';
 const APPS = {
   main: { root: '.', outDir: 'dist' },
   schedule: { root: 'apps/schedule', outDir: '../../dist-schedule' },
+  techcard: { root: 'apps/techcard', outDir: '../../dist-techcard' },
 } as const;
 
 export default defineConfig(() => {

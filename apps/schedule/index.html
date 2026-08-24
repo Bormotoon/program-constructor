@@ -11,8 +11,17 @@
       name="description"
       content="Календарный учебный график на 2026-2027 учебный год: четверти, каникулы, учебные недели и нерабочие дни считаются сами по рекомендованным срокам Минпросвещения. Выгрузка в DOCX, работает в браузере, без регистрации."
     />
-    <link rel="canonical" href="https://xn--80abidn3bem.xn--p1ai/uchebnyy-grafik/" />
-    <meta name="robots" content="index, follow" />
+    <!--
+      Приложение раздаётся физической папкой /apps/uchebnyy-grafik/ рядом с
+      WordPress, а ранжироваться должен ЛЕНДИНГ на /uchebnyy-grafik/: тут
+      тонкая JS-оболочка без текста, и в выдаче она конкурировала бы с
+      полноценной страницей. Та же схема, что у /apps/sql-detective/ и
+      /apps/logic/. canonical и robots прописаны руками: wp_head до статики в
+      корне домена не достаёт, а X-Robots-Tag тут никто не ставит — это не
+      поддомен app.*, накрытый заголовком целиком.
+    -->
+    <link rel="canonical" href="https://xn--80abidn3bem.xn--p1ai/apps/uchebnyy-grafik/" />
+    <meta name="robots" content="noindex, follow" />
     <meta property="og:type" content="website" />
     <meta property="og:title" content="Календарный учебный график 2026-2027 — конструктор" />
     <meta

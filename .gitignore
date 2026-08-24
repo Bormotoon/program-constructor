@@ -1,6 +1,8 @@
 node_modules/
 build/
 dist/
+# Сборки остальных приложений репозитория (см. APPS в vite.config.ts).
+dist-schedule/
 coverage/
 .DS_Store
 *.log

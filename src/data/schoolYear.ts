@@ -224,3 +224,98 @@ export function teachingWeeks(from: string, to: string, skipRanges: DateRange[])
   }
   return Math.round((teachingDays / 6) * 10) / 10;
 }
+
+/* ── Календарный учебный график ─────────────────────────────────────────── */
+
+/** Учебный период между каникулами. */
+export interface StudyPeriod {
+  label: string;
+  from: string;
+  to: string;
+  /** Учебных дней в периоде. */
+  days: number;
+  /** Учебных недель, с десятыми. */
+  weeks: number;
+}
+
+/** Календарных дней в отрезке, включая обе границы. */
+export function rangeDays(r: DateRange): number {
+  return Math.round((toUtc(r.to) - toUtc(r.from)) / DAY_MS) + 1;
+}
+
+export interface StudyPeriodOptions {
+  /** Последний учебный день. По умолчанию — «не ранее» из года. */
+  end?: string;
+  /** Учебная неделя: пять или шесть дней. */
+  weekDays: 5 | 6;
+  /** Учитывать нерабочие праздничные дни. */
+  skipNonTeaching?: boolean;
+  /** Дополнительные каникулы (например, первого класса). */
+  extraRanges?: DateRange[];
+}
+
+/**
+ * Учебные периоды между каникулами — четверти.
+ *
+ * ponytail: поддержаны только ЧЕТВЕРТИ. Триместровым школам сроки внутренних
+ * каникул устанавливает своим приказом сама школа, а письмо Минпросвещения
+ * от 07.07.2026 № ОК-1948/03 даёт даты только для четвертной организации.
+ * Сочинять недостающие даты нельзя — это документ, который сдают. Апгрейд:
+ * добавить в SchoolYear поле `trimesterBreaks` и заполнять его вручную из
+ * приказа школы, когда такой сценарий понадобится.
+ */
+export function studyPeriods(year: SchoolYear, opts: StudyPeriodOptions): StudyPeriod[] {
+  const end = opts.end || year.endNotEarlierThan;
+  const breaks = [...year.holidays, ...(opts.extraRanges ?? [])]
+    .filter((h) => h.from <= end)
+    .sort((a, b) => a.from.localeCompare(b.from));
+
+  const skip = new Set(
+    opts.skipNonTeaching === false ? [] : year.nonTeachingDays.map((d) => d.date),
+  );
+  const teachingWeekdays = opts.weekDays === 6 ? [1, 2, 3, 4, 5, 6] : [1, 2, 3, 4, 5];
+
+  const countDays = (from: string, to: string): number => {
+    let n = 0;
+    for (let ms = toUtc(from); ms <= toUtc(to); ms += DAY_MS) {
+      const iso = toIso(ms);
+      if (!teachingWeekdays.includes(isoWeekday(iso))) continue;
+      if (skip.has(iso)) continue;
+      if (breaks.some((b) => iso >= b.from && iso <= b.to)) continue;
+      n += 1;
+    }
+    return n;
+  };
+
+  const periods: StudyPeriod[] = [];
+  let cursor = year.start;
+  const ORDINAL = ['I', 'II', 'III', 'IV', 'V', 'VI'];
+
+  for (const b of breaks) {
+    const to = toIso(toUtc(b.from) - DAY_MS);
+    if (to >= cursor) {
+      const days = countDays(cursor, to);
+      periods.push({
+        label: `${ORDINAL[periods.length] ?? periods.length + 1} четверть`,
+        from: cursor,
+        to,
+        days,
+        weeks: Math.round((days / opts.weekDays) * 10) / 10,
+      });
+    }
+    cursor = toIso(toUtc(b.to) + DAY_MS);
+  }
+
+  if (cursor <= end) {
+    const days = countDays(cursor, end);
+    periods.push({
+      label: `${ORDINAL[periods.length] ?? periods.length + 1} четверть`,
+      from: cursor,
+      to: end,
+      days,
+      weeks: Math.round((days / opts.weekDays) * 10) / 10,
+    });
+  }
+
+  return periods;
+}

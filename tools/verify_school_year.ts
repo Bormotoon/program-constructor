@@ -14,7 +14,9 @@ import {
   isoWeekday,
   lessonDates,
   parseRu,
+  rangeDays,
   schoolYearFor,
+  studyPeriods,
   teachingWeeks,
 } from '../src/data/schoolYear';
 
@@ -153,9 +155,60 @@ check('01.09.2030 года в наборе нет', schoolYearFor('2030-09-01') 
 const weeks = teachingWeeks(year.start, year.endNotEarlierThan, year.holidays);
 check('учебных недель около 34', weeks >= 33 && weeks <= 36, `${weeks}`);
 
+/* ── 7. Календарный учебный график: четверти ────────────────────────────── */
+console.log('\n7) четверти');
+const q5 = studyPeriods(year, { weekDays: 5 });
+for (const q of q5) {
+  console.log(`  ${q.label}: ${formatRu(q.from)} — ${formatRu(q.to)}, ${q.days} дн., ${q.weeks} нед.`);
+}
+check('четвертей ровно четыре', q5.length === 4, `получено ${q5.length}`);
+check('первая начинается 01.09.2026', q5[0]?.from === '2026-09-01');
+check(
+  'первая кончается за день до осенних каникул',
+  q5[0]?.to === '2026-10-25',
+  formatRu(q5[0]?.to ?? ''),
+);
+check(
+  'вторая начинается на следующий день после осенних',
+  q5[1]?.from === '2026-11-04',
+  formatRu(q5[1]?.from ?? ''),
+);
+check(
+  'третья начинается после зимних',
+  q5[2]?.from === '2027-01-11',
+  formatRu(q5[2]?.from ?? ''),
+);
+check(
+  'четвёртая начинается после весенних и кончается не ранее 26.05',
+  q5[3]?.from === '2027-04-05' && q5[3]?.to === year.endNotEarlierThan,
+  `${formatRu(q5[3]?.from ?? '')} — ${formatRu(q5[3]?.to ?? '')}`,
+);
+check('периоды не пересекаются', q5.every((q, i) => i === 0 || q.from > q5[i - 1].to));
+const weeksSum = Math.round(q5.reduce((a, q) => a + q.weeks, 0) * 10) / 10;
+check('суммарно 33-35 учебных недель', weeksSum >= 33 && weeksSum <= 35, `${weeksSum}`);
+const q6 = studyPeriods(year, { weekDays: 6 });
+check(
+  'при шестидневке учебных дней больше, а недель столько же',
+  q6.reduce((a, q) => a + q.days, 0) > q5.reduce((a, q) => a + q.days, 0) &&
+    Math.abs(q6.reduce((a, q) => a + q.weeks, 0) - weeksSum) < 2,
+);
+const q1 = studyPeriods(year, { weekDays: 5, extraRanges: year.extraFirstGrade });
+check(
+  'у первого класса февральские каникулы дают пятый период',
+  q1.length === 5,
+  `получено ${q1.length}`,
+);
+
+console.log('\n8) длительность каникул');
+for (const h of year.holidays) {
+  console.log(`  ${h.label}: ${rangeDays(h)} дн.`);
+}
+check('осенние каникулы 9 дней', rangeDays(year.holidays[0]) === 9, `${rangeDays(year.holidays[0])}`);
+check('зимние каникулы 11 дней', rangeDays(year.holidays[1]) === 11, `${rangeDays(year.holidays[1])}`);
+check('весенние каникулы 9 дней', rangeDays(year.holidays[2]) === 9, `${rangeDays(year.holidays[2])}`);
+
 console.log(
-  `\n1 четверть: ${formatRu(year.start)} — ${formatRu('2026-10-25')}, ` +
-    `последний урок информатики ${formatRu(inf.dates.at(-1) ?? '')}`,
+  `\nпоследний урок информатики ${formatRu(inf.dates.at(-1) ?? '')}`,
 );
 console.log(failed ? `\nПРОВАЛОВ: ${failed}` : '\nВсе проверки пройдены.');
 process.exit(failed ? 1 : 0);

@@ -39,7 +39,12 @@ from frp_verify import num_follows, verify
 
 RE_TOPIC_NUM = re.compile(r"^(\d+)\.(\d+)\.?$")
 RE_TOPIC_NUM_INLINE = re.compile(r"^(\d+)\.(\d+)\.?\s+(.+)$", re.S)
-RE_CLASS = re.compile(r"^(\d+)\s*КЛАСС\b", re.IGNORECASE)
+# Год обучения. В предметных ФРП это «7 КЛАСС», в программах внеурочной
+# деятельности — «2-й класс» (проверено на корпусе 24.08.2026: без учёта
+# суффикса «-й» все четыре года программы «Край родной» слипались в один
+# класс с 24 разделами вместо шести). Суффикс необязательный и необязательно
+# через дефис: встречается и «2 -й», и «2й».
+RE_CLASS = re.compile(r"^(\d+)\s*-?\s*(?:й|Й|я|Я)?\s*КЛАСС\b", re.IGNORECASE)
 # Перед ключевым словом изредка прилипает мусор от соседней ячейки
 # («.Итого по разделу»), поэтому допускается короткий небуквенный префикс.
 # Без этого итоговая строка становилась темой: у английского СОО
@@ -407,6 +412,36 @@ def continues_numbering(section: Section | None, num: str) -> bool:
     return num_follows(section.topics[-1].num, num)
 
 
+def merge_orphan_classes(classes: list[ClassPlan]) -> list[ClassPlan]:
+    """
+    Приклеивает «класс», состоящий из безымянных разделов, к предыдущему.
+
+    Разметка года в таблице иногда стоит РАНЬШЕ последней строки предыдущего
+    года: в программе «Край родной» заголовок «3-й класс» оказался выше строки
+    «Итоговое повторение», принадлежащей второму классу. Парсер честно резал по
+    заголовку, и получалась лишняя запись из одной темы без раздела, а у
+    второго класса недоставало часа (33 вместо 34).
+
+    Признак надёжный: настоящий год всегда начинается с ИМЕНОВАННОГО раздела
+    («Раздел 1. …», «Россия и родной край (2 ч.)»). Запись, где ни у одного
+    раздела нет имени, годом быть не может.
+    """
+    out: list[ClassPlan] = []
+    for cl in classes:
+        named = any((s.name or "").strip() for s in cl.sections)
+        if not named and out and cl.sections:
+            target = out[-1]
+            if target.sections:
+                target.sections[-1].topics.extend(
+                    t for s in cl.sections for t in s.topics
+                )
+            else:
+                target.sections.extend(cl.sections)
+            continue
+        out.append(cl)
+    return out
+
+
 def build_plan(rows: list[RawRow]) -> list[ClassPlan]:
     classes: list[ClassPlan] = []
     cur_class: ClassPlan | None = None
@@ -684,6 +719,19 @@ RE_THEMATIC_HEAD = re.compile(
     r"^\s*ТЕМАТИЧЕСКОЕ\s+ПЛАНИРОВАНИЕ(?:\s*\([^)]*\))?\s*\d?\s*$", re.M
 )
 
+# Программы внеурочной деятельности озаглавливают тот же раздел длиннее:
+# «Тематическое планирование курса внеурочной деятельности "…"». Общий
+# заголовок под них расширять НЕЛЬЗЯ — им разбираются 82 предметные программы,
+# которые учителя сдают, и любая лишняя строка, попавшая в границы блока,
+# портит план молча. Поэтому второй, отдельный шаблон: суффикс обязан
+# начинаться со слова «КУРСА», а такого сочетания в предметных ФРП нет.
+#
+# Строка оглавления сюда не попадает: у неё в конце отбивка точками и номер
+# страницы, и хвост `.*` до конца строки на ней не сходится с `$` без цифр.
+RE_THEMATIC_HEAD_VUD = re.compile(
+    r"^\s*ТЕМАТИЧЕСКОЕ\s+ПЛАНИРОВАНИЕ(?:\s+КУРСА\b[^.\d]*)?\s*$", re.M | re.IGNORECASE
+)
+
 # Где блок планирования заканчивается. Кроме поурочного планирования это
 # «ПРИМЕР ТЕМАТИЧЕСКОГО ПЛАНИРОВАНИЯ С УЧЕТОМ ВАРИАТИВНЫХ МОДУЛЕЙ» у Труда:
 # такие блоки повторяют 7–9 классы ещё по два раза, и без границы один класс
@@ -721,7 +769,7 @@ def probe_layout(pdf: pdfplumber.PDF, first: int, last: int) -> dict[int, int]:
     return memo
 
 
-def thematic_blocks(pdf: pdfplumber.PDF) -> list[tuple[int, int, str]]:
+def thematic_blocks(pdf: pdfplumber.PDF, vud: bool = False) -> list[tuple[int, int, str]]:
     """
     Все блоки «Тематическое планирование» с их учебными курсами.
 
@@ -738,12 +786,15 @@ def thematic_blocks(pdf: pdfplumber.PDF) -> list[tuple[int, int, str]]:
     stops: list[int] = []
     course_at: dict[int, str] = {}
     last_course = ""
+    # У внеурочки принимается и расширенный заголовок; у предметных ФРП —
+    # только строгий, чтобы правка под ВУД не могла на них повлиять.
+    head = RE_THEMATIC_HEAD_VUD if vud else RE_THEMATIC_HEAD
 
     for i, page in enumerate(pdf.pages):
         text = page.extract_text() or ""
         for m in RE_COURSE_MENTION.finditer(text):
             last_course = m.group(1).strip()
-        if RE_THEMATIC_HEAD.search(text):
+        if head.search(text):
             starts.append(i)
             course_at[i] = last_course
         elif RE_THEMATIC_END.search(text):
@@ -815,12 +866,30 @@ def split_multiyear(classes: list[ClassPlan], grades: list[int]) -> list[ClassPl
     ]
 
 
-def parse(path: Path) -> dict:
+def parse(path: Path, meta_override: dict | None = None) -> dict:
+    """
+    Разбирает один PDF.
+
+    `meta_override` подменяет данные титульного листа (предмет, уровень,
+    классы, вариант). Нужен для программ внеурочной деятельности: у них титул
+    устроен иначе, чем у предметных, и parse_title_page() не находит ни
+    названия, ни классов. Выдумывать под них вторую эвристику разбора титула
+    незачем — эти метаданные уже собраны при зеркалировании ЕДСОО и лежат в
+    каталоге зеркала (scripts/frp_mirror/catalog.json в репозитории портала).
+    Класс без разметки в таблице определяется как раз по `grades` из меты,
+    поэтому без неё ВУД не делится по годам.
+    """
     with pdfplumber.open(path) as pdf:
         meta = parse_title_page(pdf)
+        if meta_override:
+            # Заполняем только пустое: если титул ВСЁ-ТАКИ разобрался, он
+            # точнее — это первоисточник, а мета собрана со страницы сайта.
+            for key, value in meta_override.items():
+                if value and not meta.get(key):
+                    meta[key] = value
         global PREFER_LAST_HOURS
         PREFER_LAST_HOURS = meta.get("variant") == "углублённый"
-        blocks = thematic_blocks(pdf)
+        blocks = thematic_blocks(pdf, vud=meta.get("kind") == "vud")
         if not blocks:
             return {
                 "source": path.name,
@@ -840,7 +909,7 @@ def parse(path: Path) -> dict:
             rows: list[RawRow] = []
             for i in range(first, last + 1):
                 rows.extend(page_raw_rows(pdf.pages[i], memo))
-            classes = build_plan(rows)
+            classes = merge_orphan_classes(build_plan(rows))
             # Часть программ не размечает таблицу заголовками «N КЛАСС»:
             # у ОРКСЭ она одна на единственный 4 класс, у ОБЗР — общая на два
             # года. Класс берём с титульного листа, а двухлетнюю таблицу
@@ -893,6 +962,13 @@ def main() -> int:
     ap.add_argument("-o", "--outdir", type=Path)
     ap.add_argument("-q", "--quiet", action="store_true")
     ap.add_argument(
+        "--meta",
+        type=Path,
+        help="JSON с метаданными по имени файла: {\"vud-....pdf\": "
+        "{\"subject\": …, \"level\": …, \"grades\": [1,2,3,4]}}. "
+        "Нужен для программ внеурочной деятельности — см. docstring parse()",
+    )
+    ap.add_argument(
         "--resume",
         action="store_true",
         help="пропускать файлы, для которых JSON уже собран (прогон по всему корпусу "
@@ -900,13 +976,17 @@ def main() -> int:
     )
     args = ap.parse_args()
 
+    overrides: dict[str, dict] = {}
+    if args.meta:
+        overrides = json.loads(args.meta.read_text(encoding="utf-8"))
+
     ok = failed = skipped = 0
     for path in args.pdf:
         if args.resume and args.outdir and (args.outdir / (path.stem + ".json")).exists():
             skipped += 1
             continue
         try:
-            doc = parse(path)
+            doc = parse(path, overrides.get(path.name))
         except Exception as exc:  # noqa: BLE001 — один битый файл не должен ронять прогон
             print(f"[СБОЙ ] {path.name}: {type(exc).__name__}: {exc}")
             failed += 1

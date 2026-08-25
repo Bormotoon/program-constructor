@@ -52,6 +52,7 @@ import {
   FRP_CATALOG,
   loadFrpPlan,
   subjectsForLevel,
+  vudCourses,
   type FrpCatalogEntry,
   type FrpLevel,
   type FrpPlan,
@@ -155,6 +156,7 @@ export default function App() {
   );
 
   const levelSubjects = useMemo(() => subjectsForLevel(data.educationLevel), [data.educationLevel]);
+
 
   /** Норму предмета поменял приказ, вышедший после ФРП; null — таких нет. */
   const change = useMemo(
@@ -1157,6 +1159,31 @@ function TitleTab({
   chooseSubject: (slug: string) => void;
   changeGrade: (grade: string) => void;
 }) {
+  /*
+   * Вид программы: предметная или внеурочной деятельности. Состояние ЭКРАНА,
+   * а не данных программы, — это способ выбора, а не свойство документа:
+   * дальше обе ветки собирают программу одного и того же вида. Живёт здесь,
+   * рядом с полями, которыми управляет.
+   *
+   * Синхронизируется с выбранной записью, чтобы открытая из библиотеки
+   * внеурочная программа не показывала список предметов.
+   */
+  const [kind, setKind] = useState<'subject' | 'vud'>(
+    entry?.kind === 'vud' ? 'vud' : 'subject',
+  );
+  useEffect(() => {
+    if (entry) setKind(entry.kind === 'vud' ? 'vud' : 'subject');
+  }, [entry]);
+
+  /*
+   * Курсы внеурочной деятельности отбираются НЕ по уровню образования:
+   * программа может охватывать 1–9 классы, и при отборе по уровню учитель
+   * седьмого класса её бы не нашёл. Поэтому список полный, а охват классов
+   * показан прямо в строке варианта.
+   */
+  const vudList = useMemo(() => vudCourses(), []);
+  const options = kind === 'vud' ? vudList : levelSubjects;
+
   return (
     <div className="space-y-7">
       <SectionHead
@@ -1201,7 +1228,40 @@ function TitleTab({
       </Field>
 
       <fieldset className="space-y-4 rounded-xl border border-line bg-sunken p-4">
-        <legend className="px-1.5 text-sm font-medium">Учебный предмет</legend>
+        <legend className="px-1.5 text-sm font-medium">
+          {kind === 'vud' ? 'Курс внеурочной деятельности' : 'Учебный предмет'}
+        </legend>
+
+        {/*
+          Переключатель вида программы. Две кнопки вместо выпадающего списка:
+          вариантов ровно два, и от выбора зависит содержимое соседнего поля —
+          такое переключение должно быть видно, а не спрятано в список.
+        */}
+        <div className="inline-flex rounded-lg border border-line bg-surface p-0.5" role="group" aria-label="Вид программы">
+          {([
+            ['subject', 'Учебный предмет'],
+            ['vud', 'Внеурочная деятельность'],
+          ] as const).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={kind === value}
+              onClick={() => {
+                if (kind === value) return;
+                setKind(value);
+                patch({ frpSlug: '', subject: '', grade: '' });
+              }}
+              className={
+                'rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-150 '
+                + (kind === value
+                  ? 'bg-brand-soft text-brand'
+                  : 'text-ink-muted hover:bg-sunken')
+              }
+            >
+              {label}
+            </button>
+          ))}
+        </div>
 
         <div className="grid gap-4 md:grid-cols-3">
           <Field label="Уровень образования" required>
@@ -1230,9 +1290,13 @@ function TitleTab({
 
           <div className="md:col-span-2">
             <Field
-              label="Предмет"
+              label={kind === 'vud' ? 'Курс внеурочной деятельности' : 'Предмет'}
               required
-              hint={`${levelSubjects.length} предметов по действующим федеральным рабочим программам`}
+              hint={
+                kind === 'vud'
+                  ? `${vudList.length} федеральных программ внеурочной деятельности; в скобках — классы`
+                  : `${levelSubjects.length} предметов по действующим федеральным рабочим программам`
+              }
             >
               {(id, d) => (
                 <Select
@@ -1241,12 +1305,17 @@ function TitleTab({
                   value={data.frpSlug}
                   onChange={(e) => chooseSubject(e.target.value)}
                 >
-                  <option value="">— выберите предмет —</option>
-                  {levelSubjects.map((s) => (
+                  <option value="">
+                    {kind === 'vud' ? '— выберите курс —' : '— выберите предмет —'}
+                  </option>
+                  {options.map((s) => (
                     <option key={s.slug} value={s.slug}>
                       {s.subject}
                       {SUBJECT_ABBR[s.subject] ? ` (${SUBJECT_ABBR[s.subject]})` : ''}
                       {s.variant ? ` · ${s.variant} уровень` : ''}
+                      {s.kind === 'vud' && s.grades.length
+                        ? ` · ${s.grades[0]}–${s.grades[s.grades.length - 1]} кл.`
+                        : ''}
                     </option>
                   ))}
                 </Select>

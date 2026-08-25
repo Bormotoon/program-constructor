@@ -241,6 +241,33 @@ def main() -> int:
                 skipped.append(f"{path.name} / {subject}: пустой план")
                 continue
 
+            # Битый разбор против дефекта источника — разные вещи, и различать
+            # их надо по МАСШТАБУ расхождения.
+            #
+            # У предметных ФРП расхождения бывают настоящими дефектами самого
+            # документа: «ОБЩЕЕ КОЛИЧЕСТВО 68 ≠ сумма 66». Такие записи в
+            # корпусе остаются с verified=false, и учитель видит предупреждение
+            # — это осознанное решение, менять его нельзя.
+            #
+            # А у части программ внеурочной деятельности разметка годов в
+            # таблице не находится вовсе, и все годы слипаются в один: 34 часа
+            # объявлено, 633 разобрано (математика в экономике), 68 против 204
+            # (трудные вопросы математики). Это не дефект PDF, это неверный
+            # разбор, и отдавать такой план учителю нельзя — рабочую программу
+            # он сдаёт. Порог полтора раза: ошибка на пару часов остаётся
+            # видимым предупреждением, кратное расхождение — отказ.
+            if (doc.get("kind") or "subject") == "vud":
+                broken = [
+                    f"{c['grade']} кл.: объявлено {c['declaredHours']}, разобрано {c['hours']}"
+                    for c in classes
+                    if c["declaredHours"] and c["hours"] > c["declaredHours"] * 1.5
+                ]
+                if broken:
+                    skipped.append(
+                        f"{path.name} / {subject}: разбор не сошёлся кратно — {'; '.join(broken)}"
+                    )
+                    continue
+
             # Некоторые PDF содержат раздел «Тематическое планирование» дважды
             # (у физкультуры он повторён на стр. 33 и 274 с теми же классами и
             # часами). Без проверки второй блок молча затирал первый файл,
@@ -283,6 +310,10 @@ def main() -> int:
                     "subject": subject,
                     "level": level,
                     "variant": variant,
+                    # Вид программы: предметная или внеурочной деятельности.
+                    # Приходит из меты парсера (tools/vud_meta.py); у предметных
+                    # ФРП поля нет, поэтому значение по умолчанию — "subject".
+                    "kind": doc.get("kind") or "subject",
                     "grades": sorted({c["grade"] for c in classes}),
                     # Норма часов берётся из объявленной в самой ФРП строки
                     # «ОБЩЕЕ КОЛИЧЕСТВО»: она авторитетна и не зависит от того,
@@ -401,11 +432,19 @@ export interface FrpSourceIssue {{
   text: string;
 }}
 
+export type FrpKind = 'subject' | 'vud';
+
 export interface FrpCatalogEntry {{
   slug: string;
   subject: string;
   level: FrpLevel;
   variant: string;
+  /**
+   * Предметная программа или программа внеурочной деятельности.
+   * У ВУД `level` формален (программа может охватывать 1–9 классов), поэтому
+   * отбирать их надо по КЛАССУ — см. vudForGrade().
+   */
+  kind: FrpKind;
   grades: number[];
   /** Годовая норма часов по классам (для модульных предметов — норма, а не сумма модулей). */
   hoursByGrade: Record<string, number>;
@@ -459,8 +498,30 @@ export function findCatalogEntry(
   return matches[0];
 }}
 
+/**
+ * Предметы уровня. Программы внеурочной деятельности сюда НЕ попадают: они
+ * выбираются иначе (по классу) и в списке предметов были бы шумом.
+ */
 export function subjectsForLevel(level: FrpLevel): FrpCatalogEntry[] {{
-  return FRP_CATALOG.filter((e) => e.level === level);
+  return FRP_CATALOG.filter((e) => e.level === level && e.kind !== 'vud');
+}}
+
+/**
+ * Курсы внеурочной деятельности, доступные в этом классе.
+ *
+ * Отбор по классу, а не по уровню образования, — намеренно: программа
+ * «Музыкальный театр» рассчитана на 1–9 классы, и при отборе по уровню
+ * учитель седьмого класса её бы не нашёл.
+ */
+export function vudForGrade(grade: number): FrpCatalogEntry[] {{
+  return FRP_CATALOG.filter((e) => e.kind === 'vud' && e.grades.includes(grade)).sort((a, b) =>
+    a.subject.localeCompare(b.subject, 'ru'),
+  );
+}}
+
+/** Все курсы внеурочной деятельности. */
+export function vudCourses(): FrpCatalogEntry[] {{
+  return FRP_CATALOG.filter((e) => e.kind === 'vud');
 }}
 """
     (DST / "catalog.ts").write_text(ts, encoding="utf-8")

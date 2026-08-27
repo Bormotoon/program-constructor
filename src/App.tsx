@@ -103,6 +103,80 @@ const TABS = [
 
 type TabId = (typeof TABS)[number]['id'] | 'preview';
 
+type HelpStep = {
+  id: string;
+  title: string;
+  tab?: TabId;
+  target?: string;
+  details: string[];
+};
+
+const HELP_STEPS: HelpStep[] = [
+  {
+    id: 'start',
+    title: 'Как работать с конструктором',
+    details: [
+      'Сначала выбирают предмет и класс, затем заполняют программу из ФРП, после этого проверяют таблицы и только потом выгружают документ.',
+      'Кнопка «Заполнить из ФРП» специально неактивна, пока не выбран класс: это защита от заполнения не для того класса.',
+      'Если есть предупреждения о часах, сверяйтесь с плашками в «Параметрах» и в разделе тематического планирования.',
+    ],
+  },
+  {
+    id: 'title',
+    title: 'Шаг 1: выберите предмет и класс',
+    tab: 'title',
+    target: 'title-subject-block',
+    details: [
+      'Откройте вкладку «Титульный лист».',
+      'В блоке «Учебный предмет» выберите предмет, затем класс.',
+      'Без выбранного класса автозаполнение и часть проверок не запускаются.',
+    ],
+  },
+  {
+    id: 'fill',
+    title: 'Шаг 2: нажмите «Заполнить из ФРП»',
+    tab: 'title',
+    target: 'fill-button',
+    details: [
+      'Кнопка в боковой панели подставляет темы, часы, содержание и виды деятельности из ФРП.',
+      'Если кнопка неактивна, проверьте: выбран ли класс и не идёт ли загрузка ФРП.',
+      'После заполнения переходите к проверке тематического плана.',
+    ],
+  },
+  {
+    id: 'plan',
+    title: 'Шаг 3: проверьте тематический план',
+    tab: 'plan',
+    target: 'plan-panel',
+    details: [
+      'Откройте вкладку «Тематическое планирование».',
+      'Проверьте, что часы и темы соответствуют вашему классу и учебному году.',
+      'При необходимости правьте таблицу вручную: это нормальный рабочий сценарий.',
+    ],
+  },
+  {
+    id: 'lessons',
+    title: 'Шаг 4: сформируйте поурочный план',
+    tab: 'lessons',
+    target: 'lessons-panel',
+    details: [
+      'Перейдите в «Поурочное планирование».',
+      'Поурочный план строится из тематического: тема на N часов даёт N уроков.',
+      'После генерации можно дополнить формулировки под свой класс.',
+    ],
+  },
+  {
+    id: 'export',
+    title: 'Шаг 5: скачайте файл',
+    target: 'export-controls',
+    details: [
+      'В шапке нажмите «Скачать» и выберите формат (DOCX, ODT, PDF, TXT, MD).',
+      'Кнопка «Сохранить в файл» — это черновик конструктора для повторного открытия.',
+      'Перед выгрузкой ориентируйтесь на индикатор «готово к выгрузке».',
+    ],
+  },
+];
+
 /**
  * Какую программу открыть при запуске.
  *
@@ -149,6 +223,15 @@ export default function App() {
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [excelOpen, setExcelOpen] = useState(false);
   const [theme, setTheme] = useTheme();
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [helpStep, setHelpStep] = useState(0);
+
+  const activeHelpStep = helpOpen ? HELP_STEPS[helpStep] : null;
+  const helpTarget = activeHelpStep?.target ?? '';
+  const helpClass = (target: string) =>
+    helpTarget === target
+      ? 'ring-2 ring-brand ring-offset-2 ring-offset-canvas rounded-xl'
+      : '';
 
   const entry: FrpCatalogEntry | undefined = useMemo(
     () => FRP_CATALOG.find((e) => e.slug === data.frpSlug),
@@ -575,6 +658,26 @@ export default function App() {
     }
   }, []);
 
+  useEffect(() => {
+    if (!helpOpen) return;
+    const step = HELP_STEPS[helpStep];
+    if (step.tab && activeTab !== step.tab) setActiveTab(step.tab);
+    if (!step.target) return;
+    const el = document.querySelector(`[data-help="${step.target}"]`);
+    if (el instanceof HTMLElement) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [helpOpen, helpStep, activeTab]);
+
+  useEffect(() => {
+    if (!helpOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setHelpOpen(false);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [helpOpen]);
+
   if (activeTab === 'preview') {
     return <ProgramPreview data={data} onBack={() => setActiveTab('title')} />;
   }
@@ -673,11 +776,22 @@ export default function App() {
               <span className="hidden sm:inline">Мои программы</span>
               <Badge tone="neutral">{entries.length}</Badge>
             </Button>
+            <Button
+              size="sm"
+              onClick={() => {
+                setHelpStep(0);
+                setHelpOpen(true);
+              }}
+            >
+              <Info size={15} /> ПОМОЩЬ
+            </Button>
 
             <Button size="sm" onClick={() => setActiveTab('preview')}>
               <Printer size={15} /> Предпросмотр
             </Button>
-            <ExportMenu data={data} size="sm" />
+            <div data-help="export-controls" className={helpClass('export-controls')}>
+              <ExportMenu data={data} size="sm" />
+            </div>
           </div>
         </div>
       </header>
@@ -813,6 +927,7 @@ export default function App() {
               <Button
                 variant="primary"
                 className="mt-4 w-full"
+                data-help="fill-button"
                 disabled={!plan || planLoading || !data.grade}
                 onClick={prefillPlan}
               >
@@ -859,6 +974,7 @@ export default function App() {
                 patch={patch}
                 chooseSubject={chooseSubject}
                 changeGrade={changeGrade}
+                helpTarget={helpTarget}
               />
             )}
 
@@ -913,7 +1029,7 @@ export default function App() {
             )}
 
             {activeTab === 'plan' && (
-              <div className="space-y-5">
+              <div data-help="plan-panel" className={cx('space-y-5', helpClass('plan-panel'))}>
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <SectionHead
                     title="Тематическое планирование"
@@ -1001,7 +1117,7 @@ export default function App() {
             )}
 
             {activeTab === 'lessons' && (
-              <div className="space-y-5">
+              <div data-help="lessons-panel" className={cx('space-y-5', helpClass('lessons-panel'))}>
                 <SectionHead
                   title="Поурочное планирование"
                   hint="Разворачивается из тематического: тема на N часов даёт N уроков."
@@ -1056,6 +1172,72 @@ export default function App() {
             }}
           />
         </Suspense>
+      )}
+
+      {helpOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-ink/45 p-3 sm:items-center sm:p-6"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Пошаговая помощь по конструктору"
+        >
+          <Card className="max-h-[85vh] w-full max-w-2xl overflow-auto p-5 sm:p-6">
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-medium text-ink-subtle">
+                  Шаг {helpStep + 1} из {HELP_STEPS.length}
+                </p>
+                <h2 className="mt-1 text-lg font-semibold">{HELP_STEPS[helpStep].title}</h2>
+              </div>
+              <Button size="sm" variant="ghost" onClick={() => setHelpOpen(false)}>
+                Закрыть
+              </Button>
+            </div>
+
+            <ol className="space-y-2.5 pl-5 text-sm leading-relaxed text-ink">
+              {HELP_STEPS[helpStep].details.map((line) => (
+                <li key={line} className="list-decimal">
+                  {line}
+                </li>
+              ))}
+            </ol>
+
+            {HELP_STEPS[helpStep].id === 'fill' && (
+              <Notice tone="brand" icon={<Info size={16} />}>
+                <p>
+                  Сейчас: предмет {data.frpSlug ? 'выбран' : 'не выбран'}, класс{' '}
+                  {data.grade ? `выбран (${data.grade})` : 'не выбран'}
+                  {planLoading ? ', данные ФРП загружаются.' : '.'}
+                </p>
+              </Notice>
+            )}
+
+            <div className="mt-5 flex flex-wrap justify-between gap-2">
+              <Button
+                size="sm"
+                disabled={helpStep === 0}
+                onClick={() => setHelpStep((s) => Math.max(0, s - 1))}
+              >
+                Назад
+              </Button>
+              <div className="flex gap-2">
+                {helpStep + 1 < HELP_STEPS.length ? (
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    onClick={() => setHelpStep((s) => Math.min(HELP_STEPS.length - 1, s + 1))}
+                  >
+                    Дальше
+                  </Button>
+                ) : (
+                  <Button size="sm" variant="primary" onClick={() => setHelpOpen(false)}>
+                    Понятно
+                  </Button>
+                )}
+              </div>
+            </div>
+          </Card>
+        </div>
       )}
     </div>
   );
@@ -1149,6 +1331,7 @@ function TitleTab({
   patch,
   chooseSubject,
   changeGrade,
+  helpTarget,
 }: {
   data: ProgramData;
   entry: FrpCatalogEntry | undefined;
@@ -1158,6 +1341,7 @@ function TitleTab({
   patch: (p: Partial<ProgramData>) => void;
   chooseSubject: (slug: string) => void;
   changeGrade: (grade: string) => void;
+  helpTarget: string;
 }) {
   /*
    * Вид программы: предметная или внеурочной деятельности. Состояние ЭКРАНА,
@@ -1227,7 +1411,13 @@ function TitleTab({
         )}
       </Field>
 
-      <fieldset className="space-y-4 rounded-xl border border-line bg-sunken p-4">
+      <fieldset
+        data-help="title-subject-block"
+        className={cx(
+          'space-y-4 rounded-xl border border-line bg-sunken p-4',
+          helpTarget === 'title-subject-block' && 'ring-2 ring-brand ring-offset-2 ring-offset-canvas',
+        )}
+      >
         <legend className="px-1.5 text-sm font-medium">
           {kind === 'vud' ? 'Курс внеурочной деятельности' : 'Учебный предмет'}
         </legend>

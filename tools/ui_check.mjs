@@ -471,6 +471,109 @@ for (const theme of ['light', 'dark']) {
   await context.close();
 }
 
+// --- отказ загрузки ФРП обязан быть виден ---
+// Тематическое планирование каждого предмета — отдельный ленивый чанк. Пока у
+// его загрузки не было ветки отказа, любой провал (протухшая после выката
+// вкладка, обрыв связи, фильтр школьной сети) оставлял «Заполнить из ФРП»
+// навсегда серой и молчащей. Именно так это и описывали в обращениях
+// 27.08.2026: «интерфейс конструктора не активен», «кнопка не активна, что
+// делать». Проверка держит два обещания: причина недоступности подписана
+// всегда, и у отказа есть выход.
+{
+  const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: 'ru-RU' });
+  await stubForeign(context);
+  // Самолечение перезагрузкой считаем исчерпанным — проверяем то, что учитель
+  // увидит, если и она не помогла.
+  await context.addInitScript(() => sessionStorage.setItem('pc-stale-reload', '1'));
+  const page = await context.newPage();
+  await page.goto(BASE, { waitUntil: 'networkidle' });
+  await page.evaluate(() => localStorage.clear());
+  await page.reload({ waitUntil: 'networkidle' });
+
+  const fill = page.getByRole('button', { name: /Заполнить из ФРП|Загрузка ФРП/ });
+  // Короткий таймаут и мягкий отказ: когда подписи нет вовсе, проверка должна
+  // покраснеть с внятным текстом, а не свалить весь прогон исключением.
+  const reason = async () =>
+    (await page
+      .locator('aside p.text-xs')
+      .first()
+      .textContent({ timeout: 2000 })
+      .catch(() => null)) ?? 'НЕТ';
+
+  // Пустая программа: кнопка недоступна — и обязана сказать, почему.
+  note(await fill.isDisabled(), 'на пустой программе «Заполнить из ФРП» недоступна');
+  const idle = await reason();
+  note(/выберите предмет/i.test(idle), `причина недоступности подписана: «${idle.slice(0, 46)}…»`);
+
+  // Чанк предмета больше не отдаётся.
+  const subject = page.getByLabel('Предмет', { exact: true });
+  const slug = await subject.locator('option').nth(1).getAttribute('value');
+  await page.route(`**/assets/${slug}-*.js`, (r) => r.fulfill({ status: 404, body: '' }));
+  await subject.selectOption(slug);
+  await page.waitForTimeout(2500);
+
+  const failed = await reason();
+  note(/не удалось загрузить/i.test(failed), `отказ загрузки ФРП показан учителю: «${failed.slice(0, 46)}…»`);
+  note(
+    (await page.getByRole('button', { name: 'Обновить страницу', exact: true }).count()) === 1,
+    'у отказа есть выход — «Обновить страницу»',
+  );
+  await context.close();
+}
+
+// --- пошаговая помощь ---
+// Помощь показывает пальцем, поэтому проверяется ровно это: каждый шаг с
+// целью действительно её обводит (шаг про «Заполнить из ФРП» не обводил
+// ничего), и после закрытия учитель остаётся там, откуда помощь позвал.
+{
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, locale: 'ru-RU' });
+  await stubForeign(context);
+  const page = await context.newPage();
+  await page.goto(BASE, { waitUntil: 'networkidle' });
+  await page.evaluate(() => localStorage.clear());
+  await page.reload({ waitUntil: 'networkidle' });
+
+  await page.getByRole('button', { name: 'УМК и обеспечение' }).first().click();
+  await page.getByRole('button', { name: /^Помощь$/i }).click();
+  await page.waitForTimeout(300);
+  note(
+    await page.evaluate(() => !!document.activeElement?.closest('[role="dialog"]')),
+    'помощь забирает фокус — иначе с клавиатуры до неё не добраться',
+  );
+
+  const titles = [];
+  const blind = [];
+  for (let step = 1; ; step += 1) {
+    await page.waitForTimeout(900);
+    const title = (await page.locator('[role="dialog"] h2').textContent())?.trim() ?? '';
+    titles.push(title);
+    const shown = await page.evaluate(() => {
+      const t = document.querySelector('.ring-2.ring-brand');
+      if (!t) return null;
+      const b = t.getBoundingClientRect();
+      const c = document.querySelector('[role="dialog"]').getBoundingClientRect();
+      const top = Math.max(0, b.top);
+      const bot = Math.min(window.innerHeight, b.bottom);
+      const hidden = Math.max(0, Math.min(bot, c.bottom) - Math.max(top, c.top));
+      return Math.round(Math.max(0, bot - top - hidden));
+    });
+    // Шаг без цели (общий обзор) подсветки не требует; шаг с целью — требует,
+    // причём видимой: карточка помощи не должна закрывать то, на что показывает.
+    if (/^Шаг \d/.test(title) && !shown) blind.push(title);
+    const next = page.getByRole('button', { name: /Дальше|Понятно/ });
+    if ((await next.textContent())?.includes('Понятно')) break;
+    await next.click();
+  }
+  note(titles.length >= 5, `шагов в помощи: ${titles.length}`);
+  note(blind.length === 0, `шагов, где нечего увидеть: ${blind.length}${blind.length ? ` (${blind.join('; ')})` : ''}`);
+
+  await page.getByRole('button', { name: 'Понятно', exact: true }).click();
+  await page.waitForTimeout(300);
+  const back = await page.evaluate(() => document.querySelector('[aria-current="page"]')?.textContent?.trim());
+  note(back === 'УМК и обеспечение', `помощь вернула вкладку, с которой её позвали: «${back}»`);
+  await context.close();
+}
+
 // --- узкий экран: таблицы не должны ломать вёрстку ---
 const mobile = await browser.newContext({ viewport: { width: 375, height: 812 }, locale: 'ru-RU' });
 await stubForeign(mobile);

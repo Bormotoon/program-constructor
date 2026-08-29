@@ -84,6 +84,7 @@ import {
   ProgramFileError,
 } from './utils/programFile';
 import { goal } from './utils/metrika';
+import { recoverFromStaleBuild } from './utils/staleBuild';
 
 const LEVELS: { value: FrpLevel; label: string }[] = [
   { value: 'НОО', label: 'НОО — начальное общее' },
@@ -117,7 +118,7 @@ const HELP_STEPS: HelpStep[] = [
     title: 'Как работать с конструктором',
     details: [
       'Сначала выбирают предмет и класс, затем заполняют программу из ФРП, после этого проверяют таблицы и только потом выгружают документ.',
-      'Кнопка «Заполнить из ФРП» специально неактивна, пока не выбран класс: это защита от заполнения не для того класса.',
+      'Кнопка «Заполнить из ФРП» неактивна, пока не выбраны предмет и класс. Причина всегда подписана прямо под кнопкой — остальные поля титульного листа её не блокируют.',
       'Если есть предупреждения о часах, сверяйтесь с плашками в «Параметрах» и в разделе тематического планирования.',
     ],
   },
@@ -127,8 +128,8 @@ const HELP_STEPS: HelpStep[] = [
     tab: 'title',
     target: 'title-subject-block',
     details: [
-      'Откройте вкладку «Титульный лист».',
-      'В блоке «Учебный предмет» выберите предмет, затем класс.',
+      'Помощь открыла вкладку «Титульный лист» — нужный блок обведён рамкой.',
+      'В блоке «Учебный предмет» выберите предмет, затем класс. Класс подставится сам, но его стоит проверить.',
       'Без выбранного класса автозаполнение и часть проверок не запускаются.',
     ],
   },
@@ -138,8 +139,9 @@ const HELP_STEPS: HelpStep[] = [
     tab: 'title',
     target: 'fill-button',
     details: [
-      'Кнопка в боковой панели подставляет темы, часы, содержание и виды деятельности из ФРП.',
-      'Если кнопка неактивна, проверьте: выбран ли класс и не идёт ли загрузка ФРП.',
+      'Кнопка стоит в панели «Параметры»: на компьютере — слева, на телефоне — внизу страницы, под всеми разделами.',
+      'Она подставляет темы, часы, содержание и виды деятельности из ФРП.',
+      'Если кнопка серая, причина написана прямо под ней. Обычно это несделанный шаг 1.',
       'После заполнения переходите к проверке тематического плана.',
     ],
   },
@@ -149,8 +151,8 @@ const HELP_STEPS: HelpStep[] = [
     tab: 'plan',
     target: 'plan-panel',
     details: [
-      'Откройте вкладку «Тематическое планирование».',
-      'Проверьте, что часы и темы соответствуют вашему классу и учебному году.',
+      'Помощь открыла вкладку «Тематическое планирование».',
+      'Проверьте, что часы и темы соответствуют вашему классу и учебному году: норму и набранную сумму видно в «Параметрах».',
       'При необходимости правьте таблицу вручную: это нормальный рабочий сценарий.',
     ],
   },
@@ -160,9 +162,9 @@ const HELP_STEPS: HelpStep[] = [
     tab: 'lessons',
     target: 'lessons-panel',
     details: [
-      'Перейдите в «Поурочное планирование».',
+      'Помощь открыла вкладку «Поурочное планирование».',
       'Поурочный план строится из тематического: тема на N часов даёт N уроков.',
-      'После генерации можно дополнить формулировки под свой класс.',
+      'После генерации можно дополнить формулировки под свой класс и расставить даты уроков.',
     ],
   },
   {
@@ -170,9 +172,10 @@ const HELP_STEPS: HelpStep[] = [
     title: 'Шаг 5: скачайте файл',
     target: 'export-controls',
     details: [
-      'В шапке нажмите «Скачать» и выберите формат (DOCX, ODT, PDF, TXT, MD).',
-      'Кнопка «Сохранить в файл» — это черновик конструктора для повторного открытия.',
-      'Перед выгрузкой ориентируйтесь на индикатор «готово к выгрузке».',
+      'В шапке нажмите «Скачать DOCX» — или стрелку рядом, чтобы выбрать другой формат: ODT, PDF, TXT, Markdown.',
+      'DOCX открывают Word и все современные офисы. Если документ не открылся, возьмите ODT (LibreOffice, МойОфис) или PDF — он только для печати.',
+      'Значок дискеты слева от «Мои программы» сохраняет ЧЕРНОВИК конструктора: этот файл открывается обратно в конструкторе, а не в Word.',
+      'Перед выгрузкой смотрите на значок в шапке: «готово к выгрузке» или число замечаний.',
     ],
   },
 ];
@@ -218,6 +221,8 @@ export default function App() {
   );
   const [plan, setPlan] = useState<FrpPlan | null>(null);
   const [planLoading, setPlanLoading] = useState(false);
+  /** Тематическое планирование предмета не загрузилось — см. эффект загрузки. */
+  const [planFailed, setPlanFailed] = useState(false);
   /** Slug, для которого ждём план, чтобы подставить официальные тексты ФРП. */
   const pendingFill = useRef<string | null>(null);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
@@ -225,6 +230,8 @@ export default function App() {
   const [theme, setTheme] = useTheme();
   const [helpOpen, setHelpOpen] = useState(false);
   const [helpStep, setHelpStep] = useState(0);
+  /** С какой стороны экрана держать карточку, чтобы не закрыть саму цель. */
+  const [helpDock, setHelpDock] = useState<'top' | 'bottom'>('bottom');
 
   const activeHelpStep = helpOpen ? HELP_STEPS[helpStep] : null;
   const helpTarget = activeHelpStep?.target ?? '';
@@ -325,8 +332,17 @@ export default function App() {
   );
 
   // Тематическое планирование лежит отдельными файлами и грузится по требованию.
+  //
+  // У загрузки ОБЯЗАН быть виден отказ. Пока его не было, провал ленивого чанка
+  // (протухшая после выката вкладка, обрыв связи, фильтр в школьной сети) не
+  // показывал ничего: план оставался null, «Заполнить из ФРП» — навсегда серой,
+  // и учитель упирался в мёртвый интерфейс без единого слова о причине. Ровно
+  // так это и выглядело в обращениях 27.08.2026 («интерфейс конструктора не
+  // активен», «кнопка не активна, что делать»). Лечение то же, что у выгрузки:
+  // сперва одна перезагрузка мимо кэша, и только если не помогло — сообщение.
   useEffect(() => {
     let cancelled = false;
+    setPlanFailed(false);
     if (!data.frpSlug) {
       setPlan(null);
       return;
@@ -344,6 +360,11 @@ export default function App() {
           const e = FRP_CATALOG.find((x) => x.slug === data.frpSlug);
           if (e) setData((prev) => ({ ...prev, ...fillFromFrp(e, p, prev.grade) }));
         }
+      })
+      .catch((e) => {
+        if (cancelled || recoverFromStaleBuild(e)) return;
+        console.error('Не удалось загрузить федеральную программу:', e);
+        setPlanFailed(true);
       })
       .finally(() => {
         if (!cancelled) setPlanLoading(false);
@@ -528,6 +549,27 @@ export default function App() {
     return list;
   }, [data, hoursOff, totalHours, expectedHours]);
 
+  /**
+   * Почему главная кнопка недоступна — пустая строка значит «доступна».
+   *
+   * Молча серая кнопка и была тем, на что жаловались: «интерфейс конструктора
+   * не активен», «кнопка не активна, что делать», «куда нажимать». Условие
+   * недоступности повторяет `disabled` кнопки один в один, поэтому подпись не
+   * может разойтись с делом — а прежний ответ «заполните поля со звёздочкой»
+   * был неверен: ФИО, школа и год на эту кнопку не влияют.
+   */
+  const fillBlocker = !data.frpSlug
+    ? 'Сначала выберите предмет — на вкладке «Титульный лист», блок «Учебный предмет».'
+    : planLoading
+      ? '' // об этом говорит сама кнопка
+      : planFailed
+        ? 'Не удалось загрузить федеральную программу.'
+        : !plan
+          ? 'Для этого предмета федеральной программы в конструкторе пока нет.'
+          : !data.grade
+            ? 'Сначала выберите класс — там же, рядом с предметом.'
+            : '';
+
   /** Отметка «раздел заполнен» в боковом меню — видно, что осталось сделать. */
   const done: Record<string, boolean> = {
     title: Boolean(data.schoolName && data.subject && data.grade && data.teacherName),
@@ -658,25 +700,66 @@ export default function App() {
     }
   }, []);
 
+  /**
+   * Помощь водит по вкладкам, поэтому обязана вернуть учителя туда, откуда он
+   * её позвал. Без этого она сама делала то, на что жаловались: закрыл подсказку
+   * — и стоишь на «Поурочном планировании», хотя открывал титульный лист.
+   */
+  const helpReturnTab = useRef<TabId>('title');
+
+  const openHelp = useCallback(() => {
+    helpReturnTab.current = activeTab;
+    setHelpStep(0);
+    setHelpOpen(true);
+  }, [activeTab]);
+
+  const closeHelp = useCallback(() => {
+    setHelpOpen(false);
+    setActiveTab(helpReturnTab.current);
+  }, []);
+
   useEffect(() => {
     if (!helpOpen) return;
     const step = HELP_STEPS[helpStep];
     if (step.tab && activeTab !== step.tab) setActiveTab(step.tab);
-    if (!step.target) return;
-    const el = document.querySelector(`[data-help="${step.target}"]`);
-    if (el instanceof HTMLElement) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (!step.target) {
+      setHelpDock('bottom');
+      return;
     }
+    const el = document.querySelector(`[data-help="${step.target}"]`);
+    if (!(el instanceof HTMLElement)) return;
+    // block: 'start' + scroll-margin из index.css — цель встаёт сразу под
+    // залипающей шапкой, в верхней половине экрана.
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Но не всякую цель прокрутка поднимает: «Заполнить из ФРП» живёт в
+    // ЗАЛИПАЮЩЕЙ панели и остаётся внизу экрана, где прижатая к низу карточка
+    // накрывала её целиком — то есть шаг про кнопку не показывал кнопку.
+    // Поэтому сторону выбираем по тому, где цель ОСТАНОВИЛАСЬ.
+    const decide = setTimeout(() => {
+      const r = el.getBoundingClientRect();
+      // По ВЕРХУ цели, а не по её середине: у высокого блока середина уезжает
+      // за нижнюю половину экрана, хотя начало стоит прямо под шапкой.
+      setHelpDock(r.top > window.innerHeight / 2 ? 'top' : 'bottom');
+    }, 500);
+    return () => clearTimeout(decide);
   }, [helpOpen, helpStep, activeTab]);
 
+  // Клавиатура и скринридер: диалог обязан забрать фокус и вернуть его назад —
+  // иначе aria-modal врёт, а Tab уходит гулять по шапке за спиной подсказки.
+  // Тот же порядок, что в ExcelImportDialog и LessonDatesDialog.
   useEffect(() => {
     if (!helpOpen) return;
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setHelpOpen(false);
+      if (event.key === 'Escape') closeHelp();
     };
     window.addEventListener('keydown', closeOnEscape);
-    return () => window.removeEventListener('keydown', closeOnEscape);
-  }, [helpOpen]);
+    const previous = document.activeElement as HTMLElement | null;
+    document.getElementById('help-dialog')?.focus();
+    return () => {
+      window.removeEventListener('keydown', closeOnEscape);
+      previous?.focus();
+    };
+  }, [helpOpen, closeHelp]);
 
   if (activeTab === 'preview') {
     return <ProgramPreview data={data} onBack={() => setActiveTab('title')} />;
@@ -776,14 +859,8 @@ export default function App() {
               <span className="hidden sm:inline">Мои программы</span>
               <Badge tone="neutral">{entries.length}</Badge>
             </Button>
-            <Button
-              size="sm"
-              onClick={() => {
-                setHelpStep(0);
-                setHelpOpen(true);
-              }}
-            >
-              <Info size={15} /> ПОМОЩЬ
+            <Button size="sm" onClick={openHelp}>
+              <Info size={15} /> Помощь
             </Button>
 
             <Button size="sm" onClick={() => setActiveTab('preview')}>
@@ -926,7 +1003,7 @@ export default function App() {
 
               <Button
                 variant="primary"
-                className="mt-4 w-full"
+                className={cx('mt-4 w-full', helpClass('fill-button'))}
                 data-help="fill-button"
                 disabled={!plan || planLoading || !data.grade}
                 onClick={prefillPlan}
@@ -934,6 +1011,24 @@ export default function App() {
                 <Wand2 size={15} />
                 {planLoading ? 'Загрузка ФРП…' : 'Заполнить из ФРП'}
               </Button>
+              {fillBlocker && (
+                <p className="mt-2 text-xs leading-snug text-ink-muted">
+                  {fillBlocker}
+                  {/* Именно перезагрузка, а не повторный вызов import(): провал
+                      ленивого импорта навсегда лежит в карте модулей документа,
+                      и тот же адрес больше никогда не загрузится (проверено).
+                      Вылечить это может только новый документ. */}
+                  {planFailed && (
+                    <button
+                      type="button"
+                      className="ml-1 cursor-pointer font-medium text-brand underline"
+                      onClick={() => window.location.reload()}
+                    >
+                      Обновить страницу
+                    </button>
+                  )}
+                </p>
+              )}
               {entry && (
                 <p className="mt-2 text-[11px] leading-snug text-ink-subtle">
                   Источник: {entry.source}
@@ -1175,13 +1270,27 @@ export default function App() {
       )}
 
       {helpOpen && (
+        // Карточка стоит у КРАЯ экрана, а не посередине: помощь показывает
+        // пальцем на элемент, и по центру она этот элемент собой и закрывала —
+        // до 59 % площади обведённого рамкой блока. Сторону выбирает эффект
+        // выше, по тому, где цель осталась после прокрутки.
         <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-ink/45 p-3 sm:items-center sm:p-6"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Пошаговая помощь по конструктору"
+          className={cx(
+            'fixed inset-0 z-50 flex justify-center bg-ink/45 p-3 sm:p-6',
+            helpDock === 'top' ? 'items-start' : 'items-end',
+          )}
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) closeHelp();
+          }}
         >
-          <Card className="max-h-[85vh] w-full max-w-2xl overflow-auto p-5 sm:p-6">
+          <Card
+            id="help-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Пошаговая помощь по конструктору"
+            tabIndex={-1}
+            className="max-h-[55vh] w-full max-w-2xl overflow-auto p-5 shadow-2xl outline-none sm:p-6"
+          >
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-medium text-ink-subtle">
@@ -1189,7 +1298,7 @@ export default function App() {
                 </p>
                 <h2 className="mt-1 text-lg font-semibold">{HELP_STEPS[helpStep].title}</h2>
               </div>
-              <Button size="sm" variant="ghost" onClick={() => setHelpOpen(false)}>
+              <Button size="sm" variant="ghost" onClick={closeHelp}>
                 Закрыть
               </Button>
             </div>
@@ -1202,14 +1311,21 @@ export default function App() {
               ))}
             </ol>
 
+            {/* Живое состояние ИМЕННО этой кнопки, одной причиной с подписью под
+                ней: подсказка про «сначала выберите предмет» бесполезна тому,
+                кто предмет уже выбрал. */}
             {HELP_STEPS[helpStep].id === 'fill' && (
-              <Notice tone="brand" icon={<Info size={16} />}>
-                <p>
-                  Сейчас: предмет {data.frpSlug ? 'выбран' : 'не выбран'}, класс{' '}
-                  {data.grade ? `выбран (${data.grade})` : 'не выбран'}
-                  {planLoading ? ', данные ФРП загружаются.' : '.'}
-                </p>
-              </Notice>
+              <div className="mt-4">
+                <Notice tone={fillBlocker || planLoading ? 'warn' : 'ok'} icon={<Info size={16} />}>
+                  <p>
+                    {planLoading
+                      ? 'Сейчас: идёт загрузка федеральной программы, подождите пару секунд.'
+                      : fillBlocker
+                        ? `Сейчас кнопка недоступна. ${fillBlocker}`
+                        : `Сейчас кнопка доступна: ${data.subject}, ${data.grade} класс. Можно нажимать.`}
+                  </p>
+                </Notice>
+              </div>
             )}
 
             <div className="mt-5 flex flex-wrap justify-between gap-2">
@@ -1220,21 +1336,17 @@ export default function App() {
               >
                 Назад
               </Button>
-              <div className="flex gap-2">
-                {helpStep + 1 < HELP_STEPS.length ? (
-                  <Button
-                    size="sm"
-                    variant="primary"
-                    onClick={() => setHelpStep((s) => Math.min(HELP_STEPS.length - 1, s + 1))}
-                  >
-                    Дальше
-                  </Button>
-                ) : (
-                  <Button size="sm" variant="primary" onClick={() => setHelpOpen(false)}>
-                    Понятно
-                  </Button>
-                )}
-              </div>
+              {/* Одна кнопка, а не две по очереди: замена элемента на последнем
+                  шаге роняла фокус на body, и с клавиатуры подсказка обрывалась. */}
+              <Button
+                size="sm"
+                variant="primary"
+                onClick={() =>
+                  helpStep + 1 < HELP_STEPS.length ? setHelpStep((s) => s + 1) : closeHelp()
+                }
+              >
+                {helpStep + 1 < HELP_STEPS.length ? 'Дальше' : 'Понятно'}
+              </Button>
             </div>
           </Card>
         </div>

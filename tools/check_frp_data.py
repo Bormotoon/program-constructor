@@ -152,6 +152,23 @@ def check_lessons() -> tuple[list[str], list[str]]:
     return errors, warnings
 
 
+#: Годовая норма курса внеурочной деятельности: 34 недели по два часа. Выше —
+#: склеенные годы. Дублирует VUD_YEAR_HOURS_CEILING сборщика намеренно: сборщик
+#: решает, что НЕ брать, а эта проверка стережёт уже собранный корпус.
+VUD_YEAR_HOURS_CEILING = 68
+
+#: Порог доли слов на ы/ь/ъ, см. reversed_text_ratio в tools/build_frp_data.py.
+REVERSED_TEXT_LIMIT = 0.02
+
+
+def reversed_text_ratio(text: str) -> float | None:
+    """Доля слов на ы/ь/ъ; None — судить не по чему (меньше 20 слов)."""
+    words = re.findall(r"[а-яё]{3,}", text.lower())
+    if len(words) < 20:
+        return None
+    return sum(w[0] in "ыьъ" for w in words) / len(words)
+
+
 def check_app() -> list[str]:
     errors: list[str] = []
     catalog_ts = APP / "catalog.ts"
@@ -200,6 +217,38 @@ def check_app() -> list[str]:
             if c.get("modular") and norm is not None and c["hours"] < norm:
                 errors.append(
                     f"{e['slug']}, {c['grade']} кл.: модулей на {c['hours']} ч при норме {norm} ч"
+                )
+
+        # Мусор в отгруженном корпусе — ошибка, а не предупреждение: этот план
+        # учитель сдаёт в школу. Оба признака уже отбраковывают программы при
+        # сборке (build_frp_data.py), здесь они сторожат результат: корпус
+        # лежит в репозитории и переживает и правку руками, и слияние веток.
+        # Три курса внеурочки так и приехали в каталог 1.6.0 — «Начальная
+        # военная подготовка» задом наперёд, «Хоровое пение» с 637 ч в первом
+        # классе, «Искусственный интеллект» со 136 ч в пятом.
+        flipped = reversed_text_ratio(
+            " ".join(
+                f"{sec['name']} {t['name']} {t['activity']}"
+                for c in plan["classes"]
+                for sec in c["sections"]
+                for t in sec["topics"]
+            )
+        )
+        if flipped is not None and flipped > REVERSED_TEXT_LIMIT:
+            errors.append(
+                f"{e['slug']}: текст разобран задом наперёд "
+                f"({flipped * 100:.0f} % слов на ы/ь/ъ)"
+            )
+        if e["kind"] == "vud":
+            over = [
+                f"{c['grade']} кл.: {c['hours']} ч"
+                for c in plan["classes"]
+                if not c["declaredHours"] and c["hours"] > VUD_YEAR_HOURS_CEILING
+            ]
+            if over:
+                errors.append(
+                    f"{e['slug']}: годовая нагрузка внеурочки выше нормы без "
+                    f"объявленного итога — {'; '.join(over)}"
                 )
 
     orphans = {p.stem for p in APP.glob("*.json")} - set(slugs)

@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { ArrowUpRight, Check, Copy, Heart, X } from 'lucide-react';
 import { Button, IconButton } from './ui';
 import { goal } from '../utils/metrika';
-// 3,8 КБ — ниже порога Vite (4 КБ), поэтому код уезжает в бандл строкой data:
+// 2,9 КБ — ниже порога Vite (4 КБ), поэтому код уезжает в бандл строкой data:
 // и отдельного запроса за картинкой нет.
 import qrCode from '../assets/donate-qr.png';
 
@@ -126,10 +126,12 @@ export function SupportDialog({ onClose }: { onClose: () => void }) {
 
               QR показываем только от sm и выше: свой же экран телефоном не
               отсканируешь, а на широком экране это единственный способ уйти
-              на оплату, не перенося адрес руками. Белая подложка с отступом
-              обязательна — код приходит от DonationAlerts без зоны молчания
-              (модули упираются в край), 10px при рамке 92px дают нужные по
-              стандарту 4 модуля. */}
+              на оплату, не перенося адрес руками. Код ведёт на педобраз.рф/qr/
+              — пересадочную страницу, которая отмечает цель support_qr_scan и
+              тут же уводит на форму: сам скан посчитать больше нечем, на чужом
+              домене нашего счётчика нет. Зона молчания вшита в картинку, так
+              что отступ здесь декоративный; белая подложка нужна и в тёмной
+              теме — код чёрный. */}
           <a
             href={LINK}
             target="_blank"
@@ -140,9 +142,9 @@ export function SupportDialog({ onClose }: { onClose: () => void }) {
             <img
               src={qrCode}
               alt=""
-              width={500}
-              height={500}
-              className="hidden h-[92px] w-[92px] shrink-0 rounded-md bg-white p-2.5 sm:block"
+              width={480}
+              height={480}
+              className="hidden h-[96px] w-[96px] shrink-0 rounded-md bg-white p-1 sm:block"
             />
             <span className="min-w-0 flex-1">
               <span className="block text-xs text-ink-subtle">Картой или другим способом</span>

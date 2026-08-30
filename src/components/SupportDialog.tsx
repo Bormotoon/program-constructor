@@ -24,7 +24,7 @@ import { goal } from '../utils/metrika';
 const ASKED_KEY = 'pedobraz-support-asked';
 const PHONE = '+79998081989';
 const PHONE_HUMAN = '+7 999 808-19-89';
-const LINK = 'https://dalink.to/bormotoon';
+const LINK = 'https://www.donationalerts.com/r/bormotoon';
 
 /**
  * Спрашивать ли о поддержке. Отметка ставится сразу при ответе «да», а не при
@@ -129,7 +129,7 @@ export function SupportDialog({ onClose }: { onClose: () => void }) {
           >
             <span className="min-w-0 flex-1">
               <span className="block text-xs text-ink-subtle">Картой или другим способом</span>
-              <span className="mt-0.5 block font-medium text-brand">dalink.to/bormotoon</span>
+              <span className="mt-0.5 block font-medium text-brand">donationalerts.com/r/bormotoon</span>
             </span>
             <ArrowUpRight size={16} className="shrink-0 text-brand" />
           </a>

@@ -3,6 +3,9 @@ import { createPortal } from 'react-dom';
 import { ArrowUpRight, Check, Copy, Heart, X } from 'lucide-react';
 import { Button, IconButton } from './ui';
 import { goal } from '../utils/metrika';
+// 3,8 КБ — ниже порога Vite (4 КБ), поэтому код уезжает в бандл строкой data:
+// и отдельного запроса за картинкой нет.
+import qrCode from '../assets/donate-qr.png';
 
 /**
  * Просьба о поддержке — один раз за всё время, после первой удачной выгрузки.
@@ -119,7 +122,14 @@ export function SupportDialog({ onClose }: { onClose: () => void }) {
 
           {/* Показ окна считается косвенно (оно всплывает после выгрузки), а
               вот дошло ли до перехода на страницу поддержки — не считалось
-              ничем: окупается просьба или только мешает, сказать было нельзя. */}
+              ничем: окупается просьба или только мешает, сказать было нельзя.
+
+              QR показываем только от sm и выше: свой же экран телефоном не
+              отсканируешь, а на широком экране это единственный способ уйти
+              на оплату, не перенося адрес руками. Белая подложка с отступом
+              обязательна — код приходит от DonationAlerts без зоны молчания
+              (модули упираются в край), 10px при рамке 92px дают нужные по
+              стандарту 4 модуля. */}
           <a
             href={LINK}
             target="_blank"
@@ -127,9 +137,19 @@ export function SupportDialog({ onClose }: { onClose: () => void }) {
             onClick={() => goal('support_click')}
             className="flex items-center gap-3 rounded-lg border border-brand/30 bg-brand-soft px-3.5 py-3 transition-colors duration-150 hover:border-brand"
           >
+            <img
+              src={qrCode}
+              alt=""
+              width={500}
+              height={500}
+              className="hidden h-[92px] w-[92px] shrink-0 rounded-md bg-white p-2.5 sm:block"
+            />
             <span className="min-w-0 flex-1">
               <span className="block text-xs text-ink-subtle">Картой или другим способом</span>
               <span className="mt-0.5 block font-medium text-brand">donationalerts.com/r/bormotoon</span>
+              <span className="mt-1 hidden text-xs text-ink-subtle sm:block">
+                или наведите на код камеру телефона
+              </span>
             </span>
             <ArrowUpRight size={16} className="shrink-0 text-brand" />
           </a>

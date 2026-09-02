@@ -1,5 +1,21 @@
 name: Публикация на GitHub Pages
 
+# С 2026-09-02 здесь публикуется НЕ конструктор, а страница-перенаправление
+# на портал.
+#
+# Почему сняли копию. Она была живой и растущей: 1 просмотр в день в начале
+# августа, 31 к 1 сентября. Но это был трафик МИМО портала — без рекламы, без
+# навигации, без лендинга, — и вторая версия одного и того же инструмента,
+# которую приходилось бы держать в синхроне. При этом обе копии писали в один
+# счётчик Метрики 108745963, и разделить их в отчётах можно было только
+# фильтром по домену.
+#
+# Почему перенаправление, а не удаление Pages целиком. Простое отключение
+# отдало бы этим людям 404 и потеряло внешние ссылки; meta refresh + canonical
+# переводит их на рабочую версию и склеивает адреса для поиска.
+#
+# Откат: вернуть шаги сборки (npm ci / npm run build) и путь артефакта dist.
+
 on:
   push:
     branches: [main]
@@ -10,46 +26,26 @@ permissions:
   pages: write
   id-token: write
 
-# Деплой не отменяется на полпути: прерванная публикация оставила бы сайт
-# в промежуточном состоянии.
 concurrency:
   group: pages
   cancel-in-progress: false
 
 jobs:
-  build:
-    name: Сборка
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Установка зависимостей
-        run: npm ci
-
-      - name: Сборка
-        run: npm run build
-
-      - name: Заглушка для Jekyll
-        # Без .nojekyll GitHub Pages прячет каталоги, начинающиеся с
-        # подчёркивания, — а Vite такие имена вполне может выдать.
-        run: touch dist/.nojekyll
-
-      - uses: actions/upload-pages-artifact@v5
-        with:
-          path: dist
-
   deploy:
-    name: Публикация
-    needs: build
+    name: Публикация перенаправления
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - uses: actions/checkout@v7
+
+      - name: Заглушка для Jekyll
+        run: touch pages/.nojekyll
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: pages
+
       - id: deployment
         uses: actions/deploy-pages@v4
